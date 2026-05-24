@@ -7,6 +7,6 @@
     "not_found_handling": "single-page-application"
   },
   "vars": {
-    "KZ_API_BASE": "https://dgj8.kzmall.cc"
+    "KZ_API_BASE": "https://dgj8.kzmall.cc/index.php"
   }
 }

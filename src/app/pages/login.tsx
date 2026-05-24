@@ -12,13 +12,26 @@ export function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    if (!username || !password) {
+      setError('请输入账号和密码')
+      return
+    }
+
     setLoading(true)
 
     try {
-      const res = await fetch('/api/login', {
+      const form = new URLSearchParams({
+        username,
+        userpwd: password,
+        token: '',
+        ispwd: '0'
+      })
+
+      const res = await fetch('/api/passport/login/signIn', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json, text/javascript, */*; q=0.01' },
+        body: form.toString()
       })
       const data = await res.json<{ success?: boolean; msg?: string }>()
 

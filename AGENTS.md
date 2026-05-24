@@ -9,7 +9,7 @@
 
 - **Runtime**: Cloudflare Workers (Workerd), deployed via Wrangler.
 - **Frontend**: React SPA with React Router + TailwindCSS v4. Entry is `src/app/main.tsx` → `index.html`.
-- **API**: Hono v4 in `src/index.tsx` (default export). API routes live under `/api/*`. No SSR.
+- **API**: Hono v4 in `src/index.tsx` (default export) — **thin proxy only**. All `/api/*` requests are forwarded to `${KZ_API_BASE}/*` with no business logic on the server. The Worker strips `host/referer/origin` from the forwarded request, injects `sun: 5516`, and rewrites `domain=` out of `set-cookie` responses. All business logic (body construction, header selection, response handling) lives in the frontend.
 - **Dev server**: `vite` (not `wrangler dev`). The `@cloudflare/vite-plugin` runs the Worker inside Workerd during `npm run dev`.
 - **SPA routing**: `wrangler.jsonc` sets `assets.not_found_handling: "single-page-application"` so client-side routes work on Cloudflare.
 - **Worker entry**: `src/index.tsx` — this is both the Wrangler `main` and the Vite entry for the Cloudflare plugin. Only API routes should be added here.
@@ -22,7 +22,7 @@ src/
   app/
     main.tsx             ← React SPA entry (mounted by index.html)
     App.tsx              ← Router + route definitions
-    lib/auth.ts          ← localStorage auth helpers (isLoggedIn/setLoggedIn/clearAuth)
+    lib/auth.ts          ← cookie-based auth helpers (isLoggedIn/clearAuth)
     styles/index.css     ← Tailwind v4 entry (@import "tailwindcss")
     layouts/
       AdminLayout.tsx    ← Sidebar + main content, responsive (mobile drawer)
@@ -58,11 +58,9 @@ src/
 - **TailwindCSS v4**: Uses `@import "tailwindcss"` (not `@tailwind` directives). Theme variables defined via `@theme {}` in `src/app/styles/index.css`.
 - **Static assets** go in `public/`.
 - **Auth**: `AdminLayout` checks `isLoggedIn()` from `src/app/lib/auth.ts` (reads cookie `token`) and redirects to `/login` if false. Logout clears the `token` cookie via `clearAuth()`.
-- **Mobile sidebar**: Controlled via `sidebarOpen` state in `AdminLayout`, with overlay backdrop. Click a nav link closes it via `onClose` prop.
 
 ## 快准车服 Backend
 
 - This project calls 快准车服 enterprise APIs for data. Phase 1 needs auth/login against those APIs, plus inventory/sales endpoints.
-- Login flow: frontend `POST /api/login` → Worker proxies to 快准车服 `POST /index.php/passport/login/signIn` → Worker strips `domain=` from set-cookie headers and forwards them to browser → browser stores cookies under our domain → subsequent API calls carry these cookies back to Worker, which forwards them to 快准车服.
-- `sun` header value (`5516`) is hardcoded in the Worker, not configurable via env var.
-- `KZ_API_BASE` is a wrangler var (default `https://dgj8.kzmall.cc`), overridable via `.dev.vars` or Cloudflare dashboard.
+- Login flow: frontend `POST /api/login` → Worker proxies to 快准车服 `POST /passport/login/signIn` → Worker strips `domain=` from set-cookie headers and forwards them to browser → browser stores cookies under our domain → subsequent API calls carry these cookies back to Worker, which forwards them to 快准车服.
+- `KZ_API_BASE` is a wrangler var (default `https://dgj8.kzmall.cc/index.php`), overridable via `.dev.vars` or Cloudflare dashboard.

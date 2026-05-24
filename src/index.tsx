@@ -4,54 +4,41 @@ type Bindings = {
   KZ_API_BASE: string
 }
 
+const FORWARD_HEADERS = ['cookie', 'content-type', 'accept', 'authorization', 'user-agent', 'accept-language']
+
 const app = new Hono<{ Bindings: Bindings }>()
 
-app.get('/api/health', (c) => c.json({ status: 'ok' }))
+app.use('/api/*', async (c) => {
+  const url = new URL(c.req.url)
+  const apiPath = url.pathname.replace(/^\/api\/?/, '')
+  const qs = url.search
+  const targetUrl = `${c.env.KZ_API_BASE}/${apiPath}${qs}`
 
-app.post('/api/login', async (c) => {
-  const body = await c.req.json<{ username?: string; password?: string }>().catch(() => null)
-  if (!body?.username || !body?.password) {
-    return c.json({ success: false, msg: '请输入账号和密码' }, 400)
+  const fwdHeaders = new Headers()
+  for (const h of FORWARD_HEADERS) {
+    const v = c.req.raw.headers.get(h)
+    if (v) fwdHeaders.set(h, v)
   }
+  fwdHeaders.set('sun', '5516')
 
-  const form = new URLSearchParams({
-    username: body.username,
-    userpwd: body.password,
-    token: '',
-    ispwd: '1'
+  const res = await fetch(targetUrl, {
+    method: c.req.method,
+    headers: fwdHeaders,
+    body: ['GET', 'HEAD'].includes(c.req.method) ? undefined : c.req.raw.body
   })
 
-  try {
-    const res = await fetch(`${c.env.KZ_API_BASE}/index.php/passport/login/signIn`, {
-      method: 'POST',
-      headers: {
-        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0',
-        accept: 'application/json, text/javascript, */*; q=0.01',
-        'content-type': 'application/x-www-form-urlencoded',
-        dnt: '1',
-        sun: '5516',
-        referer: `${c.env.KZ_API_BASE}/index.php/passport/login/index`
-      },
-      body: form.toString()
-    })
-
-    const data = await res.json<{ success?: boolean; msg?: string }>().catch(() => null)
-    if (!data) {
-      return c.json({ success: false, msg: '上游服务返回异常' }, 502)
+  const resHeaders = new Headers()
+  for (const [key, value] of res.headers.entries()) {
+    if (key !== 'set-cookie') {
+      resHeaders.set(key, value)
     }
-
-    const newRes = c.json(data)
-
-    const setCookies = res.headers.getAll?.('set-cookie') ?? []
-    for (const sc of setCookies) {
-      const rewritten = sc.replace(/;\s*domain=[^;]+/i, '')
-      newRes.headers.append('set-cookie', rewritten)
-    }
-
-    return newRes
-  } catch {
-    return c.json({ success: false, msg: '网络错误，请稍后重试' }, 500)
   }
+  const setCookies = res.headers.getAll?.('set-cookie') ?? []
+  for (const sc of setCookies) {
+    resHeaders.append('set-cookie', sc.replace(/;\s*domain=[^;]+/i, ''))
+  }
+
+  return new Response(res.body, { status: res.status, headers: resHeaders })
 })
 
 export default app
