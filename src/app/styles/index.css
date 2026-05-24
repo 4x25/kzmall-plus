@@ -6,4 +6,5 @@
   --color-sidebar: #1e293b;
   --color-sidebar-hover: #334155;
   --color-sidebar-active: #4f46e5;
+  --font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, Menlo, monospace;
 }
