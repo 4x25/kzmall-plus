@@ -7,12 +7,13 @@ import {
   type ColumnDef,
   type SortingState,
 } from '@tanstack/react-table'
-import { useState } from 'react'
 import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
 import type { ProductRow } from '../../lib/inventory-data'
 
 interface InventoryTableProps {
   data: ProductRow[]
+  sorting: SortingState
+  onSortingChange: (updater: SortingState | ((old: SortingState) => SortingState)) => void
 }
 
 function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
@@ -21,9 +22,7 @@ function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
   return <ArrowUpDown className="w-3 h-3 opacity-40" />
 }
 
-export function InventoryTable({ data }: InventoryTableProps) {
-  const [sorting, setSorting] = useState<SortingState>([])
-
+export function InventoryTable({ data, sorting, onSortingChange }: InventoryTableProps) {
   const columns = useMemo<ColumnDef<ProductRow, unknown>[]>(() => [
     { accessorKey: 'invNo', header: '商品编号' },
     { accessorKey: 'invName', header: '商品名称' },
@@ -41,19 +40,19 @@ export function InventoryTable({ data }: InventoryTableProps) {
     {
       accessorKey: 'in_time',
       header: '最近入库时间',
-      cell: (info) => <span className="font-mono text-gray-400 text-xs">{info.getValue() as string || '—'}</span>,
+      cell: (info) => <span className="font-mono text-gray-400 text-xs">{(info.getValue() as string) || '—'}</span>,
       enableSorting: false,
     },
     {
       accessorKey: 'out_time',
       header: '最近出库时间',
-      cell: (info) => <span className="font-mono text-gray-400 text-xs">{info.getValue() as string || '—'}</span>,
+      cell: (info) => <span className="font-mono text-gray-400 text-xs">{(info.getValue() as string) || '—'}</span>,
       enableSorting: false,
     },
     {
       id: 'qty_1',
       header: '库存数量',
-      accessorFn: (row) => parseFloat(row.qty_1) || 0,
+      accessorFn: (row) => Number.parseFloat(row.qty_1) || 0,
       cell: (info) => <span className="font-mono tabular-nums text-right block">{(info.getValue() as number).toFixed(info.getValue() as number % 1 === 0 ? 0 : 1)}</span>,
       enableSorting: true,
     },
@@ -70,7 +69,7 @@ export function InventoryTable({ data }: InventoryTableProps) {
     data,
     columns,
     state: { sorting },
-    onSortingChange: setSorting,
+    onSortingChange,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   })
@@ -81,10 +80,10 @@ export function InventoryTable({ data }: InventoryTableProps) {
         <thead>
           {table.getHeaderGroups().map((hg) => (
             <tr key={hg.id}>
-                <th className="bg-[#f8f9fb] px-3.5 py-2.5 text-left text-xs font-semibold text-gray-500 tracking-wide border-b border-gray-200 whitespace-nowrap select-none">
-                  序号
-                </th>
-                {hg.headers.map((header) => {
+              <th className="bg-[#f8f9fb] px-3.5 py-2.5 text-left text-xs font-semibold text-gray-500 tracking-wide border-b border-gray-200 whitespace-nowrap select-none">
+                序号
+              </th>
+              {hg.headers.map((header) => {
                 const canSort = header.column.getCanSort()
                 const sorted = header.column.getIsSorted()
                 return (
@@ -130,7 +129,6 @@ export function InventoryTable({ data }: InventoryTableProps) {
                       className={`px-3.5 py-2 border-b border-gray-100 whitespace-nowrap align-middle
                         ${isNumeric || isCode ? 'font-mono tabular-nums' : ''}
                         ${isNumeric ? 'text-right' : ''}
-                        ${isCode ? '' : ''}
                       `}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
