@@ -24,7 +24,7 @@ export function QueryPanel({
   loading,
 }: QueryPanelProps) {
   return (
-    <div className="bg-white border border-gray-200 rounded-md mx-8 mt-5 p-5 px-6">
+    <div className="bg-white border border-gray-200 rounded-md p-5 px-6">
       <div className="flex items-end gap-4 flex-wrap">
         <SearchableDropdown
           label="品牌"

@@ -76,7 +76,7 @@ export function InventoryTable({ data }: InventoryTableProps) {
   })
 
   return (
-    <div className="mx-8 mb-8 bg-white border border-gray-200 rounded-md overflow-auto">
+    <div className="bg-white border border-gray-200 rounded-md overflow-auto">
       <table className="w-full border-collapse text-[13px] table-auto">
         <thead>
           {table.getHeaderGroups().map((hg) => (

@@ -3,8 +3,6 @@ import { BarChart3, Package } from 'lucide-react'
 export function DashboardPage() {
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">首页概览</h1>
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
           <div className="flex items-center gap-3">
@@ -20,10 +18,6 @@ export function DashboardPage() {
           </div>
           <p className="text-2xl font-bold text-gray-900 mt-2">--</p>
         </div>
-      </div>
-
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-        <p className="text-gray-400 text-center py-12">数据加载中，请先完成登录...</p>
       </div>
     </div>
   )

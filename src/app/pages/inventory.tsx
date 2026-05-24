@@ -60,11 +60,6 @@ export function InventoryPage() {
 
   return (
     <div>
-      <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center gap-3">
-        <h1 className="text-lg font-semibold text-gray-900">商品库存销量查询</h1>
-        <span className="text-[11px] text-gray-500 bg-[#f4f5f7] px-2 py-0.5 rounded-full border border-gray-200">内部工具</span>
-      </div>
-
       <QueryPanel
         brandOptions={brandOptions}
         selectedBrand={selectedBrand}
@@ -78,20 +73,20 @@ export function InventoryPage() {
       />
 
       {queried && (
-        <div className="px-8 pt-3.5 pb-2.5 text-[13px] text-gray-500">
+        <div className="pt-3.5 pb-2.5 text-[13px] text-gray-500">
           共 <strong className="text-gray-900 font-semibold">{loading ? '…' : data.length}</strong> 条记录
         </div>
       )}
 
       {loading && (
-        <div className="mx-8 mb-8 bg-white border border-gray-200 rounded-md flex items-center justify-center py-16 text-gray-400">
+        <div className="mb-8 bg-white border border-gray-200 rounded-md flex items-center justify-center py-16 text-gray-400">
           <Loader2 className="w-5 h-5 animate-spin mr-2" />
           <span className="text-sm">加载中…</span>
         </div>
       )}
 
       {queried && !loading && error && (
-        <div className="mx-8 mb-8 bg-white border border-red-200 rounded-md flex items-start gap-3 py-6 px-5 text-red-700">
+        <div className="mb-8 bg-white border border-red-200 rounded-md flex items-start gap-3 py-6 px-5 text-red-700">
           <AlertCircle className="w-5 h-5 mt-0.5 shrink-0" />
           <div className="text-sm leading-relaxed whitespace-pre-wrap break-all">{error}</div>
         </div>

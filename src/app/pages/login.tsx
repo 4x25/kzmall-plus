@@ -52,11 +52,12 @@ export function LoginPage() {
       <div className="w-full max-w-md px-4">
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-              <Lock className="w-8 h-8 text-primary" />
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900">快准商城+</h1>
-            <p className="text-sm text-gray-500 mt-1">个人经营者管理平台</p>
+            <img
+              src="https://kz-fe.oss-cn-hangzhou.aliyuncs.com/static/dgj/img/dgj_login_logo_new.png"
+              alt="站管家+"
+              className="h-16 mx-auto mb-4 object-contain"
+            />
+            <h1 className="text-2xl font-bold text-gray-900">站管家+</h1>
           </div>
 
           {error && (
