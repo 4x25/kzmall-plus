@@ -2,5 +2,11 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "kzmall-plus",
   "compatibility_date": "2025-08-03",
-  "main": "./src/index.tsx"
+  "main": "./src/index.tsx",
+  "assets": {
+    "not_found_handling": "single-page-application"
+  },
+  "vars": {
+    "KZ_API_BASE": "https://dgj8.kzmall.cc"
+  }
 }
