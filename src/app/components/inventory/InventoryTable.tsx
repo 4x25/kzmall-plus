@@ -81,7 +81,10 @@ export function InventoryTable({ data }: InventoryTableProps) {
         <thead>
           {table.getHeaderGroups().map((hg) => (
             <tr key={hg.id}>
-              {hg.headers.map((header) => {
+                <th className="bg-[#f8f9fb] px-3.5 py-2.5 text-left text-xs font-semibold text-gray-500 tracking-wide border-b border-gray-200 whitespace-nowrap select-none">
+                  序号
+                </th>
+                {hg.headers.map((header) => {
                 const canSort = header.column.getCanSort()
                 const sorted = header.column.getIsSorted()
                 return (
@@ -106,17 +109,21 @@ export function InventoryTable({ data }: InventoryTableProps) {
         <tbody>
           {table.getRowModel().rows.length === 0 ? (
             <tr>
-              <td colSpan={columns.length} className="text-center text-gray-400 py-12">
+              <td colSpan={columns.length + 1} className="text-center text-gray-400 py-12">
                 暂无匹配数据
               </td>
             </tr>
           ) : (
-            table.getRowModel().rows.map((row) => (
+            table.getRowModel().rows.map((row, index) => (
               <tr key={row.id} className="hover:bg-blue-50/40 transition-colors">
+                <td className="px-3.5 py-2 border-b border-gray-100 whitespace-nowrap align-middle text-gray-500 font-mono tabular-nums">
+                  {index + 1}
+                </td>
                 {row.getVisibleCells().map((cell) => {
                   const colId = cell.column.id
                   const isNumeric = colId === 'qty_1' || colId === 'saleQty'
                   const isCode = colId === 'invNo' || colId === 'skuId'
+
                   return (
                     <td
                       key={cell.id}
