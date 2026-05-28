@@ -6,6 +6,10 @@ import { QueryPanel } from '../components/inventory/QueryPanel'
 import { InventoryTable } from '../components/inventory/InventoryTable'
 import { fetchBrands, fetchInventory, fetchSales, type BrandOption, type ProductRow } from '../lib/inventory-data'
 import type { DropdownOption } from '../components/inventory/SearchableDropdown'
+import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert'
+import { Badge } from '../components/ui/badge'
+import { Button } from '../components/ui/button'
+import { Card } from '../components/ui/card'
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10)
@@ -112,7 +116,15 @@ export function InventoryPage() {
   }, [endDate, sortedData, startDate])
 
   return (
-    <div>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">库存销量</h1>
+          <p className="text-sm text-muted-foreground">按品牌和日期范围查询库存与销售数量</p>
+        </div>
+        <Badge variant="secondary">品牌 {brands.length}</Badge>
+      </div>
+
       <QueryPanel
         brandOptions={brandOptions}
         selectedBrand={selectedBrand}
@@ -126,34 +138,32 @@ export function InventoryPage() {
       />
 
       {queried && (
-        <div className="pt-3.5 pb-2.5 flex items-center justify-between gap-3 text-[13px] text-gray-500">
-          <div>
-            共 <strong className="text-gray-900 font-semibold">{loading ? '…' : data.length}</strong> 条记录
-          </div>
-          <button
-            type="button"
-            onClick={handleExport}
-            disabled={loading || data.length === 0}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Download className="w-3.5 h-3.5" />
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            共 <span className="font-medium text-foreground">{loading ? '…' : data.length}</span> 条记录
+          </p>
+          <Button type="button" variant="outline" onClick={handleExport} disabled={loading || data.length === 0}>
+            <Download className="size-4" />
             导出
-          </button>
+          </Button>
         </div>
       )}
 
       {loading && (
-        <div className="mb-8 bg-white border border-gray-200 rounded-md flex items-center justify-center py-16 text-gray-400">
-          <Loader2 className="w-5 h-5 animate-spin mr-2" />
-          <span className="text-sm">加载中…</span>
-        </div>
+        <Card className="flex items-center justify-center py-16 text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm">
+            <Loader2 className="size-5 animate-spin" />
+            加载中…
+          </div>
+        </Card>
       )}
 
       {queried && !loading && error && (
-        <div className="mb-8 bg-white border border-red-200 rounded-md flex items-start gap-3 py-6 px-5 text-red-700">
-          <AlertCircle className="w-5 h-5 mt-0.5 shrink-0" />
-          <div className="text-sm leading-relaxed whitespace-pre-wrap break-all">{error}</div>
-        </div>
+        <Alert variant="destructive">
+          <AlertCircle className="size-4" />
+          <AlertTitle>查询失败</AlertTitle>
+          <AlertDescription className="whitespace-pre-wrap break-all">{error}</AlertDescription>
+        </Alert>
       )}
 
       {queried && !loading && !error && <InventoryTable data={data} sorting={sorting} onSortingChange={setSorting} />}

@@ -9,6 +9,9 @@ import {
 } from '@tanstack/react-table'
 import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
 import type { ProductRow } from '../../lib/inventory-data'
+import { Card } from '../ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table'
+import { cn } from '../../lib/utils'
 
 interface InventoryTableProps {
   data: ProductRow[]
@@ -17,9 +20,9 @@ interface InventoryTableProps {
 }
 
 function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
-  if (sorted === 'asc') return <ArrowUp className="w-3 h-3" />
-  if (sorted === 'desc') return <ArrowDown className="w-3 h-3" />
-  return <ArrowUpDown className="w-3 h-3 opacity-40" />
+  if (sorted === 'asc') return <ArrowUp className="size-3" />
+  if (sorted === 'desc') return <ArrowDown className="size-3" />
+  return <ArrowUpDown className="size-3 opacity-40" />
 }
 
 export function InventoryTable({ data, sorting, onSortingChange }: InventoryTableProps) {
@@ -40,27 +43,27 @@ export function InventoryTable({ data, sorting, onSortingChange }: InventoryTabl
     {
       accessorKey: 'in_time',
       header: '最近入库时间',
-      cell: (info) => <span className="font-mono text-gray-400 text-xs">{(info.getValue() as string) || '—'}</span>,
+      cell: (info) => <span className="font-mono text-xs text-muted-foreground">{(info.getValue() as string) || '—'}</span>,
       enableSorting: false,
     },
     {
       accessorKey: 'out_time',
       header: '最近出库时间',
-      cell: (info) => <span className="font-mono text-gray-400 text-xs">{(info.getValue() as string) || '—'}</span>,
+      cell: (info) => <span className="font-mono text-xs text-muted-foreground">{(info.getValue() as string) || '—'}</span>,
       enableSorting: false,
     },
     {
       id: 'qty_1',
       header: '库存数量',
       accessorFn: (row) => Number.parseFloat(row.qty_1) || 0,
-      cell: (info) => <span className="font-mono tabular-nums text-right block">{(info.getValue() as number).toFixed(info.getValue() as number % 1 === 0 ? 0 : 1)}</span>,
+      cell: (info) => <span className="block text-right font-mono tabular-nums">{(info.getValue() as number).toFixed(info.getValue() as number % 1 === 0 ? 0 : 1)}</span>,
       enableSorting: true,
     },
     {
       id: 'saleQty',
       header: '销售数量',
       accessorFn: (row) => row.saleQty,
-      cell: (info) => <span className="font-mono tabular-nums text-right block">{info.getValue() as number}</span>,
+      cell: (info) => <span className="block text-right font-mono tabular-nums">{info.getValue() as number}</span>,
       enableSorting: true,
     },
   ], [])
@@ -75,71 +78,58 @@ export function InventoryTable({ data, sorting, onSortingChange }: InventoryTabl
   })
 
   return (
-    <div className="bg-white border border-gray-200 rounded-md overflow-auto">
-      <table className="w-full border-collapse text-[13px] table-auto">
-        <thead>
+    <Card className="overflow-hidden p-0">
+      <Table>
+        <TableHeader>
           {table.getHeaderGroups().map((hg) => (
-            <tr key={hg.id}>
-              <th className="bg-[#f8f9fb] px-3.5 py-2.5 text-left text-xs font-semibold text-gray-500 tracking-wide border-b border-gray-200 whitespace-nowrap select-none">
-                序号
-              </th>
+            <TableRow key={hg.id} className="bg-muted/50 hover:bg-muted/50">
+              <TableHead className="px-4">序号</TableHead>
               {hg.headers.map((header) => {
                 const canSort = header.column.getCanSort()
                 const sorted = header.column.getIsSorted()
                 return (
-                  <th
+                  <TableHead
                     key={header.id}
-                    className={`bg-[#f8f9fb] px-3.5 py-2.5 text-left text-xs font-semibold text-gray-500 tracking-wide border-b border-gray-200 whitespace-nowrap select-none
-                      ${canSort ? 'cursor-pointer text-blue-600 hover:bg-[#eef0f4]' : ''}
-                      ${header.id === 'qty_1' || header.id === 'saleQty' ? 'text-right' : ''}
-                    `}
+                    className={cn('px-4', canSort && 'cursor-pointer select-none', (header.id === 'qty_1' || header.id === 'saleQty') && 'text-right')}
                     onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
                   >
-                    <span className="inline-flex items-center gap-1">
+                    <span className={cn('inline-flex items-center gap-1', (header.id === 'qty_1' || header.id === 'saleQty') && 'justify-end')}>
                       {flexRender(header.column.columnDef.header, header.getContext())}
                       {canSort && <SortIcon sorted={sorted} />}
                     </span>
-                  </th>
+                  </TableHead>
                 )
               })}
-            </tr>
+            </TableRow>
           ))}
-        </thead>
-        <tbody>
+        </TableHeader>
+        <TableBody>
           {table.getRowModel().rows.length === 0 ? (
-            <tr>
-              <td colSpan={columns.length + 1} className="text-center text-gray-400 py-12">
+            <TableRow>
+              <TableCell colSpan={columns.length + 1} className="h-32 text-center text-muted-foreground">
                 暂无匹配数据
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ) : (
             table.getRowModel().rows.map((row, index) => (
-              <tr key={row.id} className="hover:bg-blue-50/40 transition-colors">
-                <td className="px-3.5 py-2 border-b border-gray-100 whitespace-nowrap align-middle text-gray-500 font-mono tabular-nums">
-                  {index + 1}
-                </td>
+              <TableRow key={row.id}>
+                <TableCell className="px-4 font-mono text-muted-foreground tabular-nums">{index + 1}</TableCell>
                 {row.getVisibleCells().map((cell) => {
                   const colId = cell.column.id
                   const isNumeric = colId === 'qty_1' || colId === 'saleQty'
                   const isCode = colId === 'invNo' || colId === 'skuId'
 
                   return (
-                    <td
-                      key={cell.id}
-                      className={`px-3.5 py-2 border-b border-gray-100 whitespace-nowrap align-middle
-                        ${isNumeric || isCode ? 'font-mono tabular-nums' : ''}
-                        ${isNumeric ? 'text-right' : ''}
-                      `}
-                    >
+                    <TableCell key={cell.id} className={cn('px-4', (isNumeric || isCode) && 'font-mono tabular-nums', isNumeric && 'text-right')}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
+                    </TableCell>
                   )
                 })}
-              </tr>
+              </TableRow>
             ))
           )}
-        </tbody>
-      </table>
-    </div>
+        </TableBody>
+      </Table>
+    </Card>
   )
 }
