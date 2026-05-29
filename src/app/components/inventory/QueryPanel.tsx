@@ -1,4 +1,8 @@
 import { SearchableDropdown, DropdownOption } from './SearchableDropdown'
+import { Button } from '../ui/button'
+import { Card, CardContent } from '../ui/card'
+import { DatePicker } from '../ui/date-picker'
+import { Label } from '../ui/label'
 
 interface QueryPanelProps {
   brandOptions: DropdownOption[]
@@ -24,47 +28,37 @@ export function QueryPanel({
   loading,
 }: QueryPanelProps) {
   return (
-    <div className="bg-white border border-gray-200 rounded-md p-5 px-6">
-      <div className="flex items-end gap-4 flex-wrap">
-        <SearchableDropdown
-          label="品牌"
-          options={brandOptions}
-          value={selectedBrand}
-          onChange={onBrandChange}
-          placeholder="全部品牌"
-        />
-
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-gray-500 tracking-wide">销售日期</label>
-          <div className="flex items-center gap-2">
-            <input
-              type="date"
+    <Card>
+      <CardContent>
+        <div className="flex flex-wrap items-end gap-4">
+          <SearchableDropdown
+            label="品牌"
+            options={brandOptions}
+            value={selectedBrand}
+            onChange={onBrandChange}
+            placeholder="全部品牌"
+          />
+          <div className="grid gap-2">
+            <Label htmlFor="startDate">开始日期</Label>
+            <DatePicker
+              id="startDate"
               value={startDate}
-              onChange={(e) => onStartDateChange(e.target.value)}
-              className="h-9 px-3 w-[160px] border border-gray-200 rounded-md text-[13px] text-gray-900 outline-none transition-colors focus:border-blue-600 focus:ring-[3px] focus:ring-blue-600/10 cursor-pointer"
-            />
-            <span className="text-[13px] text-gray-400">至</span>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => onEndDateChange(e.target.value)}
-              className="h-9 px-3 w-[160px] border border-gray-200 rounded-md text-[13px] text-gray-900 outline-none transition-colors focus:border-blue-600 focus:ring-[3px] focus:ring-blue-600/10 cursor-pointer"
+              onChange={onStartDateChange}
             />
           </div>
-        </div>
-
-        <div className="flex flex-col gap-1.5 ml-auto">
-          <label className="text-xs font-medium text-gray-500 tracking-wide">&nbsp;</label>
-          <button
-            type="button"
-            onClick={onQuery}
-            disabled={loading}
-            className="h-9 px-5 rounded-md text-[13px] font-medium bg-blue-600 text-white transition-colors hover:bg-blue-700 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          <div className="grid gap-2">
+            <Label htmlFor="endDate">结束日期</Label>
+            <DatePicker
+              id="endDate"
+              value={endDate}
+              onChange={onEndDateChange}
+            />
+          </div>
+          <Button type="button" onClick={onQuery} disabled={loading} className="ml-auto">
             查询
-          </button>
+          </Button>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   )
 }

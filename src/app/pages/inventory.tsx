@@ -1,14 +1,22 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Loader2, AlertCircle, Download } from 'lucide-react'
+import { Loader2, AlertCircle } from 'lucide-react'
 import type { SortingState } from '@tanstack/react-table'
 import * as XLSX from 'xlsx'
 import { QueryPanel } from '../components/inventory/QueryPanel'
 import { InventoryTable } from '../components/inventory/InventoryTable'
 import { fetchBrands, fetchInventory, fetchSales, type BrandOption, type ProductRow } from '../lib/inventory-data'
 import type { DropdownOption } from '../components/inventory/SearchableDropdown'
+import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert'
+import { Card } from '../components/ui/card'
+
+function firstDayOfMonthStr() {
+  const date = new Date()
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`
+}
 
 function todayStr() {
-  return new Date().toISOString().slice(0, 10)
+  const date = new Date()
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
 function getSortValue(row: ProductRow, id: string) {
@@ -31,7 +39,7 @@ export function InventoryPage() {
   const [brands, setBrands] = useState<BrandOption[]>([])
   const [brandOptions, setBrandOptions] = useState<DropdownOption[]>([])
   const [selectedBrand, setSelectedBrand] = useState<number | null>(null)
-  const [startDate, setStartDate] = useState('2024-05-01')
+  const [startDate, setStartDate] = useState(firstDayOfMonthStr())
   const [endDate, setEndDate] = useState(todayStr())
   const [data, setData] = useState<ProductRow[]>([])
   const [sorting, setSorting] = useState<SortingState>([])
@@ -80,6 +88,10 @@ export function InventoryPage() {
         saleQty: salesMap.get(row.skuId) ?? 0,
       }))
       setData(merged)
+      setSorting([
+        { id: 'saleQty', desc: true },
+        { id: 'qty_1', desc: true },
+      ])
     } catch (e) {
       setData([])
       setError(e instanceof Error ? e.message : '请求失败')
@@ -112,7 +124,7 @@ export function InventoryPage() {
   }, [endDate, sortedData, startDate])
 
   return (
-    <div>
+    <div className="space-y-6">
       <QueryPanel
         brandOptions={brandOptions}
         selectedBrand={selectedBrand}
@@ -125,38 +137,24 @@ export function InventoryPage() {
         loading={loading}
       />
 
-      {queried && (
-        <div className="pt-3.5 pb-2.5 flex items-center justify-between gap-3 text-[13px] text-gray-500">
-          <div>
-            共 <strong className="text-gray-900 font-semibold">{loading ? '…' : data.length}</strong> 条记录
-          </div>
-          <button
-            type="button"
-            onClick={handleExport}
-            disabled={loading || data.length === 0}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Download className="w-3.5 h-3.5" />
-            导出
-          </button>
-        </div>
-      )}
-
       {loading && (
-        <div className="mb-8 bg-white border border-gray-200 rounded-md flex items-center justify-center py-16 text-gray-400">
-          <Loader2 className="w-5 h-5 animate-spin mr-2" />
-          <span className="text-sm">加载中…</span>
-        </div>
+        <Card className="flex items-center justify-center py-16 text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm">
+            <Loader2 className="size-5 animate-spin" />
+            加载中…
+          </div>
+        </Card>
       )}
 
       {queried && !loading && error && (
-        <div className="mb-8 bg-white border border-red-200 rounded-md flex items-start gap-3 py-6 px-5 text-red-700">
-          <AlertCircle className="w-5 h-5 mt-0.5 shrink-0" />
-          <div className="text-sm leading-relaxed whitespace-pre-wrap break-all">{error}</div>
-        </div>
+        <Alert variant="destructive">
+          <AlertCircle className="size-4" />
+          <AlertTitle>查询失败</AlertTitle>
+          <AlertDescription className="whitespace-pre-wrap break-all">{error}</AlertDescription>
+        </Alert>
       )}
 
-      {queried && !loading && !error && <InventoryTable data={data} sorting={sorting} onSortingChange={setSorting} />}
+      {queried && !loading && !error && <InventoryTable data={data} sorting={sorting} onSortingChange={setSorting} onExport={handleExport} />}
     </div>
   )
 }

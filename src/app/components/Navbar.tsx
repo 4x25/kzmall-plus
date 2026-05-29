@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { LayoutDashboard, Package } from 'lucide-react'
+import { cn } from '../lib/utils'
 
 const navItems = [
   { path: '/', label: '首页概览', icon: LayoutDashboard },
@@ -8,22 +9,23 @@ const navItems = [
 
 export function Navbar() {
   return (
-    <nav className="flex items-center gap-1">
+    <nav className="flex items-center gap-3">
       {navItems.map((item) => (
         <NavLink
           key={item.path}
           to={item.path}
           end={item.path === '/'}
           className={({ isActive }) =>
-            `flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
+            cn(
+              'inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors',
               isActive
-                ? 'bg-navbar-active text-white'
-                : 'text-gray-300 hover:bg-navbar-hover hover:text-white'
-            }`
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+            )
           }
         >
-          <item.icon className="w-4 h-4" />
-          <span className="text-sm font-medium">{item.label}</span>
+          <item.icon className="size-4" />
+          {item.label}
         </NavLink>
       ))}
     </nav>
