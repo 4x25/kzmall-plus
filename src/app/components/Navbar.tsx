@@ -1,10 +1,11 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Package } from 'lucide-react'
+import { LayoutDashboard, LineChart, Package } from 'lucide-react'
 import { cn } from '../lib/utils'
 
 const navItems = [
   { path: '/', label: '首页概览', icon: LayoutDashboard },
-  { path: '/inventory', label: '库存销量', icon: Package }
+  { path: '/inventory', label: '库存销量', icon: Package },
+  { path: '/sales-report', label: '销售报表', icon: LineChart }
 ]
 
 export function Navbar() {

@@ -3,6 +3,7 @@ import { AdminLayout } from './layouts/AdminLayout'
 import { LoginPage } from './pages/login'
 import { DashboardPage } from './pages/dashboard'
 import { InventoryPage } from './pages/inventory'
+import { SalesReportPage } from './pages/sales-report'
 
 const router = createBrowserRouter([
   {
@@ -14,7 +15,8 @@ const router = createBrowserRouter([
     element: <AdminLayout />,
     children: [
       { index: true, element: <DashboardPage /> },
-      { path: 'inventory', element: <InventoryPage /> }
+      { path: 'inventory', element: <InventoryPage /> },
+      { path: 'sales-report', element: <SalesReportPage /> }
     ]
   }
 ])
