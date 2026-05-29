@@ -1,7 +1,7 @@
 import { SearchableDropdown, DropdownOption } from './SearchableDropdown'
 import { Button } from '../ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
-import { Input } from '../ui/input'
+import { Card, CardContent } from '../ui/card'
+import { DatePicker } from '../ui/date-picker'
 import { Label } from '../ui/label'
 
 interface QueryPanelProps {
@@ -29,9 +29,6 @@ export function QueryPanel({
 }: QueryPanelProps) {
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base">查询条件</CardTitle>
-      </CardHeader>
       <CardContent>
         <div className="flex flex-wrap items-end gap-4">
           <SearchableDropdown
@@ -43,22 +40,18 @@ export function QueryPanel({
           />
           <div className="grid gap-2">
             <Label htmlFor="startDate">开始日期</Label>
-            <Input
+            <DatePicker
               id="startDate"
-              type="date"
               value={startDate}
-              onChange={(e) => onStartDateChange(e.target.value)}
-              className="w-[160px]"
+              onChange={onStartDateChange}
             />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="endDate">结束日期</Label>
-            <Input
+            <DatePicker
               id="endDate"
-              type="date"
               value={endDate}
-              onChange={(e) => onEndDateChange(e.target.value)}
-              className="w-[160px]"
+              onChange={onEndDateChange}
             />
           </div>
           <Button type="button" onClick={onQuery} disabled={loading} className="ml-auto">

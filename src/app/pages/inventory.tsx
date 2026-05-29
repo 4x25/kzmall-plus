@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Loader2, AlertCircle, Download } from 'lucide-react'
+import { Loader2, AlertCircle } from 'lucide-react'
 import type { SortingState } from '@tanstack/react-table'
 import * as XLSX from 'xlsx'
 import { QueryPanel } from '../components/inventory/QueryPanel'
@@ -7,12 +7,16 @@ import { InventoryTable } from '../components/inventory/InventoryTable'
 import { fetchBrands, fetchInventory, fetchSales, type BrandOption, type ProductRow } from '../lib/inventory-data'
 import type { DropdownOption } from '../components/inventory/SearchableDropdown'
 import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert'
-import { Badge } from '../components/ui/badge'
-import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 
+function firstDayOfMonthStr() {
+  const date = new Date()
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`
+}
+
 function todayStr() {
-  return new Date().toISOString().slice(0, 10)
+  const date = new Date()
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
 function getSortValue(row: ProductRow, id: string) {
@@ -35,7 +39,7 @@ export function InventoryPage() {
   const [brands, setBrands] = useState<BrandOption[]>([])
   const [brandOptions, setBrandOptions] = useState<DropdownOption[]>([])
   const [selectedBrand, setSelectedBrand] = useState<number | null>(null)
-  const [startDate, setStartDate] = useState('2024-05-01')
+  const [startDate, setStartDate] = useState(firstDayOfMonthStr())
   const [endDate, setEndDate] = useState(todayStr())
   const [data, setData] = useState<ProductRow[]>([])
   const [sorting, setSorting] = useState<SortingState>([])
@@ -84,6 +88,10 @@ export function InventoryPage() {
         saleQty: salesMap.get(row.skuId) ?? 0,
       }))
       setData(merged)
+      setSorting([
+        { id: 'saleQty', desc: true },
+        { id: 'qty_1', desc: true },
+      ])
     } catch (e) {
       setData([])
       setError(e instanceof Error ? e.message : '请求失败')
@@ -117,14 +125,6 @@ export function InventoryPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">库存销量</h1>
-          <p className="text-sm text-muted-foreground">按品牌和日期范围查询库存与销售数量</p>
-        </div>
-        <Badge variant="secondary">品牌 {brands.length}</Badge>
-      </div>
-
       <QueryPanel
         brandOptions={brandOptions}
         selectedBrand={selectedBrand}
@@ -136,18 +136,6 @@ export function InventoryPage() {
         onQuery={handleQuery}
         loading={loading}
       />
-
-      {queried && (
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground">
-            共 <span className="font-medium text-foreground">{loading ? '…' : data.length}</span> 条记录
-          </p>
-          <Button type="button" variant="outline" onClick={handleExport} disabled={loading || data.length === 0}>
-            <Download className="size-4" />
-            导出
-          </Button>
-        </div>
-      )}
 
       {loading && (
         <Card className="flex items-center justify-center py-16 text-muted-foreground">
@@ -166,7 +154,7 @@ export function InventoryPage() {
         </Alert>
       )}
 
-      {queried && !loading && !error && <InventoryTable data={data} sorting={sorting} onSortingChange={setSorting} />}
+      {queried && !loading && !error && <InventoryTable data={data} sorting={sorting} onSortingChange={setSorting} onExport={handleExport} />}
     </div>
   )
 }

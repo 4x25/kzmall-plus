@@ -11,10 +11,6 @@ const stats = [
 export function DashboardPage() {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">首页概览</h1>
-        <p className="text-sm text-muted-foreground">查看库存、销量和经营数据概览</p>
-      </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((item) => (
           <Card key={item.label}>

@@ -1,4 +1,4 @@
-import { Navigate, useNavigate, Outlet } from 'react-router-dom'
+import { Link, Navigate, useNavigate, Outlet } from 'react-router-dom'
 import { LogOut, Store } from 'lucide-react'
 import { Navbar } from '../components/Navbar'
 import { Button } from '../components/ui/button'
@@ -20,13 +20,13 @@ export function AdminLayout() {
   return (
     <div className="min-h-screen bg-muted/30">
       <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-4 lg:px-8">
-          <div className="flex items-center gap-2 font-semibold">
+        <div className="flex h-16 items-center gap-6 px-4 lg:px-6">
+          <Link to="/" className="flex items-center gap-2 font-semibold">
             <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <Store className="size-5" />
             </div>
             <span>站管家+</span>
-          </div>
+          </Link>
           <Separator orientation="vertical" className="h-6" />
           <Navbar />
           <div className="ml-auto">
@@ -36,7 +36,7 @@ export function AdminLayout() {
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-7xl p-4 lg:p-8">
+      <main className="p-4 lg:p-6">
         <Outlet />
       </main>
     </div>

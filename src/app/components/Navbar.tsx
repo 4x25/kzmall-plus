@@ -9,7 +9,7 @@ const navItems = [
 
 export function Navbar() {
   return (
-    <nav className="flex items-center gap-1">
+    <nav className="flex items-center gap-3">
       {navItems.map((item) => (
         <NavLink
           key={item.path}
