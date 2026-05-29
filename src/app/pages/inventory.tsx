@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import dayjs from 'dayjs'
 import { Loader2, AlertCircle } from 'lucide-react'
 import type { SortingState } from '@tanstack/react-table'
 import * as XLSX from 'xlsx'
@@ -10,13 +11,11 @@ import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert'
 import { Card } from '../components/ui/card'
 
 function firstDayOfMonthStr() {
-  const date = new Date()
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`
+  return dayjs().startOf('month').format('YYYY-MM-DD')
 }
 
 function todayStr() {
-  const date = new Date()
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+  return dayjs().format('YYYY-MM-DD')
 }
 
 function getSortValue(row: ProductRow, id: string) {

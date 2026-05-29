@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useLocalStorageState } from 'ahooks'
 import {
   useReactTable,
   getCoreRowModel,
@@ -36,29 +37,25 @@ function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
 }
 
 export function InventoryTable({ data, sorting, onSortingChange, onExport }: InventoryTableProps) {
-  const [pagination, setPagination] = useState(() => {
-    const savedPageSize = Number(localStorage.getItem(PAGE_SIZE_STORAGE_KEY))
-    return { pageIndex: 0, pageSize: [10, 20, 50, 100].includes(savedPageSize) ? savedPageSize : 20 }
+  const [pageSize, setPageSize] = useLocalStorageState<number>(PAGE_SIZE_STORAGE_KEY, {
+    defaultValue: 20,
+    serializer: String,
+    deserializer: (value) => {
+      const savedPageSize = Number(value)
+      return [10, 20, 50, 100].includes(savedPageSize) ? savedPageSize : 20
+    },
   })
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: pageSize ?? 20 })
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [jumpPage, setJumpPage] = useState('')
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
-    try {
-      const saved = localStorage.getItem(COLUMN_VISIBILITY_STORAGE_KEY)
-      return saved ? JSON.parse(saved) : {}
-    } catch {
-      return {}
-    }
+  const [columnVisibility, setColumnVisibility] = useLocalStorageState<VisibilityState>(COLUMN_VISIBILITY_STORAGE_KEY, {
+    defaultValue: {},
   })
 
   useEffect(() => {
-    localStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(pagination.pageSize))
-  }, [pagination.pageSize])
-
-  useEffect(() => {
-    localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(columnVisibility))
-  }, [columnVisibility])
+    setPageSize(pagination.pageSize)
+  }, [pagination.pageSize, setPageSize])
 
   useEffect(() => {
     setPagination((current) => ({ ...current, pageIndex: 0 }))

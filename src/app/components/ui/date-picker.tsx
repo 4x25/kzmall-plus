@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import dayjs from 'dayjs'
 import { CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from './button'
 import { Popover, PopoverContent, PopoverTrigger } from './popover'
@@ -10,26 +11,21 @@ interface DatePickerProps {
   onChange: (value: string) => void
 }
 
-function formatDate(date: Date) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+function formatDate(date: dayjs.ConfigType) {
+  return dayjs(date).format('YYYY-MM-DD')
 }
 
 function todayValue() {
-  return formatDate(new Date())
+  return formatDate(dayjs())
 }
 
 function parseDate(value: string) {
-  const [year, month, day] = value.split('-').map(Number)
-  if (!year || !month || !day) return new Date()
-  return new Date(year, month - 1, day)
+  const date = dayjs(value, 'YYYY-MM-DD')
+  return date.isValid() ? date : dayjs()
 }
 
 function formatDisplay(value: string) {
-  const date = parseDate(value)
-  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`
+  return parseDate(value).format('YYYY年M月D日')
 }
 
 export function DatePicker({ id, value, onChange }: DatePickerProps) {
@@ -41,14 +37,14 @@ export function DatePicker({ id, value, onChange }: DatePickerProps) {
     setViewDate(parseDate(value))
   }, [value])
 
-  const year = viewDate.getFullYear()
-  const month = viewDate.getMonth()
-  const firstDay = new Date(year, month, 1).getDay()
-  const days = new Date(year, month + 1, 0).getDate()
+  const year = viewDate.year()
+  const month = viewDate.month()
+  const firstDay = viewDate.startOf('month').day()
+  const days = viewDate.daysInMonth()
   const today = todayValue()
 
   const changeMonth = (offset: number) => {
-    setViewDate((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1))
+    setViewDate((current) => current.add(offset, 'month').startOf('month'))
   }
 
   return (
@@ -80,9 +76,9 @@ export function DatePicker({ id, value, onChange }: DatePickerProps) {
           ))}
           {Array.from({ length: days }).map((_, index) => {
             const day = index + 1
-            const date = new Date(year, month, day)
+            const date = viewDate.date(day)
             const dateValue = formatDate(date)
-            const isSelected = formatDate(selectedDate) === dateValue
+            const isSelected = selectedDate.isSame(date, 'day')
             const isFuture = dateValue > today
 
             return (
