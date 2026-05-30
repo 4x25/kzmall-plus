@@ -199,32 +199,62 @@ async function fetchKeyAccountSalesDetail(startDate: string, endDate: string): P
   return json.data.rows
 }
 
-export async function fetchSalesReport(periodType: ReportPeriodType, value: string): Promise<SalesReportResult> {
-  const periods = getRecentPeriods(periodType, value)
-  const rangeStart = periods[0].startDate
-  const rangeEnd = periods[periods.length - 1].endDate
-  const normalValues = periods.map(emptyMetricValues)
-  const keyAccountValues = periods.map(emptyMetricValues)
-
-  const [normalRows, keyAccountRows] = await Promise.all([
-    fetchNormalSalesDetail(rangeStart, rangeEnd),
-    fetchKeyAccountSalesDetail(rangeStart, rangeEnd),
-  ])
-
-  for (const row of normalRows) {
+function addNormalRows(periods: PeriodRange[], normalValues: MetricValues[], rows: NormalSalesRow[]) {
+  for (const row of rows) {
     const index = findPeriodIndex(periods, row.date)
     if (index < 0) continue
     normalValues[index].grossProfit += toNumber(row.saleProfit)
     normalValues[index].salesRevenue += toNumber(row.recAmount)
     normalValues[index].salesCost += toNumber(row.cost)
   }
+}
 
-  for (const row of keyAccountRows) {
+function addKeyAccountRows(periods: PeriodRange[], keyAccountValues: MetricValues[], rows: KeyAccountSalesRow[]) {
+  for (const row of rows) {
     const index = findPeriodIndex(periods, row.billDate)
     if (index < 0) continue
     keyAccountValues[index].grossProfit += toNumber(row.totalCost)
     keyAccountValues[index].salesRevenue += toNumber(row.totalAmount)
     keyAccountValues[index].salesCost += toNumber(row.totalPurPrice)
+  }
+}
+
+async function fetchPeriodData(period: PeriodRange) {
+  return Promise.all([
+    fetchNormalSalesDetail(period.startDate, period.endDate),
+    fetchKeyAccountSalesDetail(period.startDate, period.endDate),
+  ])
+}
+
+async function fetchSalesRows(periods: PeriodRange[]) {
+  const rangeStart = periods[0].startDate
+  const rangeEnd = periods[periods.length - 1].endDate
+
+  try {
+    const [normalRows, keyAccountRows] = await Promise.all([
+      fetchNormalSalesDetail(rangeStart, rangeEnd),
+      fetchKeyAccountSalesDetail(rangeStart, rangeEnd),
+    ])
+    return periods.map((period, index) => ({ period, index, normalRows, keyAccountRows }))
+  } catch {
+    const rows: { period: PeriodRange; index: number; normalRows: NormalSalesRow[]; keyAccountRows: KeyAccountSalesRow[] }[] = []
+    for (const [index, period] of periods.entries()) {
+      const [normalRows, keyAccountRows] = await fetchPeriodData(period)
+      rows.push({ period, index, normalRows, keyAccountRows })
+    }
+    return rows
+  }
+}
+
+export async function fetchSalesReport(periodType: ReportPeriodType, value: string): Promise<SalesReportResult> {
+  const periods = getRecentPeriods(periodType, value)
+  const normalValues = periods.map(emptyMetricValues)
+  const keyAccountValues = periods.map(emptyMetricValues)
+  const rowsByPeriod = await fetchSalesRows(periods)
+
+  for (const item of rowsByPeriod) {
+    addNormalRows([item.period], [normalValues[item.index]], item.normalRows)
+    addKeyAccountRows([item.period], [keyAccountValues[item.index]], item.keyAccountRows)
   }
 
   const currentIndex = periods.length - 1
