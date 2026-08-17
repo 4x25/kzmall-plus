@@ -53,6 +53,16 @@ Agent 最小输出建议为 `{ id, name }`；不要将整份品牌表重复写�
 GET /basedata/Category/tree
 ```
 
+无请求参数。当前非空响应外层为 `success:boolean`、`status:string`、`redirect:null`、`msg:string`、`data:object`，分类树位于 `data.tree[]`。
+
+| 响应字段/路径 | 类型/可空 | UI 用途 | 释义 |
+|---|---|---|---|
+| `data.tree[].id` | string | 分类节点值/上下文 | 分类内部 ID |
+| `data.tree[].parentId` | string | 树层级 | 父分类 ID；顶层按后端约定取根值 |
+| `data.tree[].name` | string | 分类显示名 | 分类中文名称 |
+| `data.tree[].code` | string | 业务查询值 | 分类编码，供相关查询条件使用 |
+| `data.tree[].child` | array | 子级节点 | 递归子分类数组；子节点字段结构相同 |
+
 该接口用于页面的“快准类别”级联选择器。选择后，业务查询通常提交：
 
 - `cateoryTreeValue`：注意后端沿用拼写错误 `cateory`；
