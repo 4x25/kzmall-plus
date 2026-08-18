@@ -1,5 +1,7 @@
 # 库存查询接口
 
+本页出现的商品、仓库、品牌、分类和业务类型 ID/编码参数，其获取接口与字段映射统一见[查询参数 ID / 编码来源](./lookups.md)。特别注意 `goodsNo`、`storageNo` 在这些报表中取业务编码，而不是仅凭参数后缀推断。
+
 ## 库存余额
 
 证据等级：A。
@@ -11,8 +13,8 @@ GET /report/invBalance?action=detail&goods=&goodsNo=&storage=&storageNo=&catId=&
 | UI 筛选项 | 请求参数 | 类型 | 默认值/枚举 | 释义 | 证据 |
 |---|---|---|---|---|---|
 | 固定查询动作 | `action` | string | `detail` | 库存余额明细查询 | 抓包 |
-| 商品 | `goods` / `goodsNo` | string | 空 | 显示值与商品内部编号 | UI + 抓包 |
-| 仓库 | `storage` / `storageNo` | string | 空 | 显示值与仓库编号 | UI + 抓包 |
+| 商品 | `goods` / `goodsNo` | string | 空 | 商品选择器分别提交商品 `id` 与 `number`；显示名不进入这两个字段 | UI + 抓包 + [来源映射](./lookups.md#商品选择器) |
+| 仓库 | `storage` / `storageNo` | string | 空 | 仓库选择器分别提交 `id` 与 `locationNo` | UI + 抓包 + [来源映射](./lookups.md#普通仓库) |
 | 商品类别 | `catId` / `catName` | string/number + string | 空 | 类别 ID 与显示名 | UI + 抓包 |
 | 品牌 | `brandId` | string/number | 空 | 品牌 ID | UI + 抓包 |
 | 显示货位 | `area` | boolean-like string | `false` | 是否展开货位维度 | UI + 抓包 |
@@ -230,8 +232,8 @@ GET /report/deliverDetail?action=detail&beginDate=<YYYY-MM-DD>&endDate=<YYYY-MM-
 |---|---|---|---|---|---|
 | 固定查询动作 | `action` | string | `detail` | 商品收发明细 | 页面脚本查询 URL |
 | 日期范围 | `beginDate` / `endDate` | `YYYY-MM-DD` | 页面日期范围 | 收发业务发生日期 | UI + 查询对象 |
-| 商品 | `goods` / `goodsNo` | string | 空 | 商品显示值与内部编号 | UI + 查询对象 |
-| 仓库 | `storage` / `storageNo` | string | 空 | 仓库显示值与内部编号 | UI + 查询对象 |
+| 商品 | `goods` / `goodsNo` | string | 空 | 商品选择器分别提交 `id` 与 `number` | UI + 查询对象 + [来源映射](./lookups.md#商品选择器) |
+| 仓库 | `storage` / `storageNo` | string | 空 | 当前查询读取 `storageNo=locationNo`；`storage` 是兼容参数 | UI + 查询对象 + [来源映射](./lookups.md#普通仓库) |
 | 品牌 | `brandId` | integer/string | 空 | 品牌内部 ID | UI + 查询对象 |
 | 快准分类 | `cateoryTreeValue` | string | 空 | 快准商品分类选择值，保留页面历史拼写 | UI + 查询对象 |
 | 三方分类 | `categoryTreeAllValue` | string | 空 | 三方商品分类选择值 | UI + 查询对象 |
@@ -279,8 +281,8 @@ GET /report/deliverSummary?action=detail&beginDate=<YYYY-MM-DD>&endDate=<YYYY-MM
 |---|---|---|---|---|---|
 | 固定查询动作 | `action` | string | `detail` | 商品收发汇总 | 抓包 |
 | 日期范围 | `beginDate` / `endDate` | `YYYY-MM-DD` | 页面日期范围 | 统计期间 | UI + 抓包 |
-| 商品 | `goods` / `goodsNo` | string | 空 | 商品显示值与编号 | UI + 抓包 |
-| 仓库 | `storage` / `storageNo` | string | 空 | 仓库显示值与编号 | UI + 抓包 |
+| 商品 | `goods` / `goodsNo` | string | 空 | 商品选择器分别提交 `id` 与 `number` | UI + 抓包 + [来源映射](./lookups.md#商品选择器) |
+| 仓库 | `storage` / `storageNo` | string | 空 | 仓库选择器分别提交 `id` 与 `locationNo` | UI + 抓包 + [来源映射](./lookups.md#普通仓库) |
 | 品牌 | `brandId` | string/number | 空 | 品牌 ID | UI + 抓包 |
 | 快准分类 | `cateoryTreeValue` | string | 空 | 快准分类树选择值，保留页面历史拼写 | UI + 抓包 |
 | 三方分类 | `categoryTreeAllValue` | string | 空 | 三方分类树选择值 | UI + 抓包 |

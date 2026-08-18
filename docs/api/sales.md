@@ -1,5 +1,7 @@
 # 销售查询接口
 
+本页涉及的客户、门店、员工、用户、商品、仓库、活动、微仓、车型及大客户分类参数，其选项接口和精确取值字段统一见[查询参数 ID / 编码来源](./lookups.md)。同名 `salesId`、`goodsNo` 在不同页面可能读取不同字段，必须按消费页面匹配。
+
 > 本文档只收录列表、库存和报表查询。页面中的开单、收款、发货、退款、调拨、审核、编辑、复制、删除和导出等动作均不在查询 Agent 的可调用范围内。
 
 ## 销售单管理
@@ -24,15 +26,15 @@ action=getSalesOrderlist&matchCon=&hxState=&beginDate=<YYYY-MM-DD>&endDate=<YYYY
 | 综合搜索 | `matchCon` | string | 空 | 客户、单号或整单备注 | UI + 查询对象 |
 | 状态页签 | `billStatus` | string | `all`；另有页面状态值 | 销售单状态 | 查询对象 + 抓包 |
 | 订单类型 | `billNo_type` | number/string | 空；`0` 销售、`1` 铺货、`2` 微仓铺货 | 销售订单类型 | 组件枚举 |
-| 销售门店 | `storeId` | string/number | 空 | 门店 ID | 查询对象 |
-| 销售员 | `salesId` | string/number | 空 | 销售人员 ID | 查询对象 |
-| 送货员 | `delieverId` | string/number | 空 | 送货人员 ID，沿用后端拼写 | 查询对象 |
+| 销售门店 | `storeId` | string/number | 空 | `/basedata/Stores/getStoreIdName` 返回的 `data[].id` | 查询对象 + [来源映射](./lookups.md#门店) |
+| 销售员 | `salesId` | string/number | 空 | `/basedata/employee?action=list` 返回的 `data.items[].id` | 查询对象 + [来源映射](./lookups.md#员工) |
+| 送货员 | `delieverId` | string/number | 空 | 与销售员同源，取员工 `id`；沿用后端拼写 | 查询对象 + [来源映射](./lookups.md#员工) |
 | 收款方式 | `payType` | string/number | 空；`0` 挂账、`1` 现金 | 订单收款方式 | 组件枚举 |
-| 结算方式 | `wayId` | string/number | 空 | 结算方式 ID | 查询对象 |
-| 开单员 | `userId` | string/number | 空 | 制单人员 ID | 查询对象 |
+| 结算方式 | `wayId` | string/number | 空 | `/basedata/assist/getAssistList` 的 `PayMethod` 条目 `id` | 查询对象 + [来源映射](./lookups.md#结算方式) |
+| 开单员 | `userId` | string/number | 空 | `/scm/invSa/SelectQueryAllUser` 返回的 `userId` | 查询对象 + [来源映射](./lookups.md#登录用户操作用户) |
 | 数据来源 | `billNo_source` | string/number | 空；`0` 销售开单、`1` ERP 订单、`8` E 站商城、`10` E 站维修、`14` E 站活动、`16` AI 助手订单、`17` E 站 APP | 订单来源 | 组件枚举 |
 | VIN | `vin` | string | 空 | 关联车辆 VIN | 查询对象 |
-| 活动 ID | `activity_id` | string/number | 空 | E 站活动 ID | 查询对象 |
+| 活动 ID | `activity_id` | string/number | 空 | E 站活动列表 `data.data[].id` | 查询对象 + [来源映射](./lookups.md#e-站活动) |
 | 核销状态（当前 UI 已注释） | `hxState` | string/number | 空 | 兼容历史查询对象；当前请求仍保留 | 模板 + 抓包 |
 | 页大小/页码 | `rows` / `page` | integer | `50` / `1`；页大小可选 50、100、200/300 | jqGrid 分页 | 查询对象 + 抓包 |
 | 排序字段/方向 | `sidx` / `sord` | string | 空 | 客户端排序参数 | 查询对象 + 抓包 |
@@ -254,7 +256,7 @@ page=1&rows=20&storageIds=&storageNames=&startDate=<YYYY-MM-DD>&endDate=<YYYY-MM
 
 | UI 筛选项 | 请求参数 | 类型 | 默认值/枚举 | 释义 | 证据 |
 |---|---|---|---|---|---|
-| 微仓/归属客户 | `storageIds` / `storageNames` | string/collection | 空全部 | 所选微仓 ID 与显示名集合 | 仓库组件 + 查询对象 |
+| 微仓/归属客户 | `storageIds` / `storageNames` | string/collection | 空全部 | `/Storage/getMoveStorage` 行的 `id` 与 `name` | 仓库组件 + 查询对象 + [来源映射](./lookups.md#微仓) |
 | 微仓标志 | `isMoveShop` | string/number | 当前页面查询为 `1` | 限定微仓流水 | 真实抓包 |
 | 日期 | `startDate` / `endDate` | `YYYY-MM-DD` | 当月 1 日 / 当前日 | 流水日期范围 | 日期控件 + 抓包 |
 | 单据编号 | `billNo` | string | 空 | 精确或关键字匹配流水单号 | `v-model` + 抓包 |
@@ -1083,7 +1085,7 @@ GET /report/salesDetail_detail_cost?action=detail&...&action=sales_detail
 | 客户 | `customerNo` | string/collection | 空全部 | 客户选择器返回的客户编码集合 | UI + `data('numbers')` + 抓包 |
 | 商品 | `goodsNo` | string/collection | 空全部 | 商品选择器返回的商品 ID 集合；参数名中的 `No` 不代表显示名 | UI + `data('ids')` + 抓包 |
 | 仓库 | `storageNo` | string/collection | 空全部 | 仓库选择器返回的仓库编码集合 | UI + `data('numbers')` + 抓包 |
-| 业务员 | `salesId` | string/collection | 空全部 | 销售人员 ID 集合 | UI + `data('numbers')` + 抓包 |
+| 业务员 | `salesId` | string/collection | 空全部 | 员工 `number` 集合；字段名虽为 `salesId`，这里不取员工 `id` | UI + `data('numbers')` + 抓包 + [来源映射](./lookups.md#员工) |
 | 品牌 | `brandId` | string/collection | 空全部 | 品牌 ID 集合 | UI + `data('ids')` + 抓包 |
 | 快准类别 | `cateoryTreeValue` | string/collection | 空 | 快准商品分类树选择值，保留后端历史拼写 | UI + 分类树组件 + 抓包 |
 | 快准类别补充选择 | `kzCategoryIds` | JSON array string | `[]` | 导航式快准分类 ID 列表，请求中是 JSON 字符串 | 查询处理器 + 抓包 |
@@ -1160,9 +1162,9 @@ GET /report/salesDetail_customer?action=customer&beginDate=<YYYY-MM-DD>&endDate=
 |---|---|---|---|---|---|
 | 汇总页签 | 路径 + `action` | string | 商品：`salesDetail_inv` + `inv`；客户：`salesDetail_customer` + `customer` | 选择汇总维度 | 页签处理器 + 抓包 |
 | 开始/结束日期 | `beginDate` / `endDate` | `YYYY-MM-DD` | 当前月范围 | 销售统计期间 | 日期控件 + 抓包 |
-| 客户 | `customerNo` | string/number | 空全部 | 客户选择值 | 组件绑定 + 抓包 |
-| 商品 | `goodsNo` | string/number | 空全部 | 商品选择值 | 组件绑定 + 抓包 |
-| 仓库 | `storageNo` | string/number | 空全部 | 仓库选择值 | 组件绑定 + 抓包 |
+| 客户 | `customerNo` | string/number | 空全部 | 按商品页签取客户 `id`；按客户页签取客户 `number` | 组件绑定 + 抓包 + [来源映射](./lookups.md#首页主数据集合) |
+| 商品 | `goodsNo` | string/number | 空全部 | 两个页签都取商品 `id` | 组件绑定 + 抓包 + [来源映射](./lookups.md#商品选择器) |
+| 仓库 | `storageNo` | string/number | 空全部 | 按商品页签取仓库 `locationNo`；按客户页签不提交仓库条件 | 组件绑定 + 抓包 + [来源映射](./lookups.md#普通仓库) |
 | 品牌 | `brandId` | string/number | 空全部 | 品牌 ID | 组件绑定 + 抓包 |
 | 快准类别 | `cateoryTreeValue` | string/collection | 空 | 保留后端拼写的快准分类选择值 | 组件绑定 + 抓包 |
 | 三方类别 | `categoryTreeAllValue` | string/collection | 空 | 三方分类树选择值 | 组件绑定 + 抓包 |

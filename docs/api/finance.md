@@ -1,5 +1,7 @@
 # 财务查询接口
 
+本页涉及的客户、供应商、门店、结算方式和结算账户参数，其获取接口与字段映射统一见[查询参数 ID / 编码来源](./lookups.md)。尤其要区分应付明细中代表供应商 `id` 的 `accountNo`，以及现金银行报表中代表结算账户 `number` 的同名参数。
+
 > 这里只记录由正常页面查询明确证明的契约；没有抓到业务请求时不猜后端路径或参数名，并明确标为 C 级。
 
 ## 利润表
@@ -113,7 +115,7 @@ GET /report/fundBalance_detailSupplier?action=detailSupplier&type=10&beginDate=<
 | UI 筛选项 | 请求参数 | 类型 | 默认值 | 释义 | 证据 |
 |---|---|---|---|---|---|
 | 日期 | `beginDate` / `endDate` | `YYYY-MM-DD` | 当月 1 日 / 当前日 | 单据日期范围，均为必填 | 日期控件 + 抓包 |
-| 供应商 | `accountNo` | string/number | 空全部 | 供应商选择控件的内部值 | 控件绑定 + 抓包 |
+| 供应商 | `accountNo` | string/number | 空全部 | 供应商 `id`；这里不是供应商 `number`，也不是结算账户编号 | 控件绑定 + 抓包 + [来源映射](./lookups.md#accountno-的两个不同含义) |
 | 应付维度 | `type` | string | 固定 `10` | 供应商应付账款维度 | 抓包 |
 | jqGrid 参数 | `_search`、`nd`、`rows`、`page`、`sidx`、`sord` | mixed | `false`、动态、`3000`、`1`、`date`、`desc` | 防缓存、分页和排序 | 抓包 + 网格配置 |
 
