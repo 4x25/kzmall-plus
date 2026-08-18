@@ -6,7 +6,7 @@
   "main": "./src/index.tsx",
   "assets": {
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*", "/agent-api", "/agent-api/*"]
+    "run_worker_first": ["/api/*"]
   },
   "vars": {
     "KZ_API_BASE": "https://dgj8.kzmall.cc/index.php",

@@ -117,7 +117,7 @@ describe('browser management and Agent proxy', () => {
     }))
     expect(logout.headers.getSetCookie().some((cookie) => cookie.startsWith('kzp_mgmt=') && cookie.includes('Max-Age=0'))).toBe(true)
 
-    const agent = await dispatch(new Request(`${APP_ORIGIN}/agent-api/report/invBalance?action=detail`, {
+    const agent = await dispatch(new Request(`${APP_ORIGIN}/api/report/invBalance?action=detail`, {
       headers: { 'x-credential': created.token, cookie: 'attacker=1', authorization: 'Bearer attacker' },
     }))
     expect(agent.status).toBe(200)
@@ -131,6 +131,26 @@ describe('browser management and Agent proxy', () => {
       new URL(String(input)).pathname.endsWith('/passport/login/signIn')
     ))
     expect(signInCalls).toHaveLength(1)
+  })
+
+  it('keeps requests without X-Credential on the browser Cookie proxy', async () => {
+    let forwardedUrl = ''
+    let forwardedHeaders = new Headers()
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      forwardedUrl = String(input)
+      forwardedHeaders = new Headers(init?.headers)
+      return Response.json({ success: true })
+    }))
+
+    const response = await dispatch(new Request(`${APP_ORIGIN}/api/report/list?a=1&a=2`, {
+      headers: { cookie: 'token=browser-session', accept: 'application/json' },
+    }))
+
+    expect(response.status).toBe(200)
+    expect(new URL(forwardedUrl).pathname).toBe('/index.php/report/list')
+    expect(new URL(forwardedUrl).search).toBe('?a=1&a=2')
+    expect(forwardedHeaders.get('cookie')).toBe('token=browser-session')
+    expect(forwardedHeaders.get('sun')).toBe('5516')
   })
 
   it('clears a stale management session when a successful login cannot issue a replacement', async () => {
@@ -176,7 +196,7 @@ describe('browser management and Agent proxy', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const originalBody = 'billNo=ABC&action=save'
-    const response = await dispatch(new Request(`${APP_ORIGIN}/agent-api/scm/example/save?mode=full`, {
+    const response = await dispatch(new Request(`${APP_ORIGIN}/api/scm/example/save?mode=full`, {
       method: 'POST',
       headers: {
         'x-credential': created.token,
@@ -221,7 +241,7 @@ describe('browser management and Agent proxy', () => {
     }))
 
     const response = await dispatch(new Request(
-      `${APP_ORIGIN}/agent-api/report/list?a=1&a=2&encoded=%2Fvalue`,
+      `${APP_ORIGIN}/api/report/list?a=1&a=2&encoded=%2Fvalue`,
       {
         headers: {
           'x-credential': created.token,
@@ -242,7 +262,7 @@ describe('browser management and Agent proxy', () => {
     expect(businessCalls[1].headers.get('cookie')).toContain('token=renewed-get-session')
   })
 
-  it('rejects auth endpoints, cross-origin-shaped paths, traversal encodings and forbidden methods', async () => {
+  it('rejects auth/management endpoints, cross-origin-shaped paths, traversal encodings and forbidden methods', async () => {
     const ownerId = 'owner-paths'
     await putAccountCredential(env, validAccount(ownerId))
     const created = await createAgentToken(env, ownerId, '路径测试')
@@ -250,12 +270,14 @@ describe('browser management and Agent proxy', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const paths = [
-      '/agent-api/passport/login/signIn',
-      '/agent-api/passport//login/signOut',
-      '/agent-api/https://evil.test/resource',
-      '/agent-api/%252e%252e/secret',
-      '/agent-api/%ZZ/secret',
-      '/agent-api/report/%00hidden',
+      '/api/passport/login/signIn',
+      '/api/passport//login/signOut',
+      '/api/agent-credentials',
+      '/api/agent-credentials/account',
+      '/api/https://evil.test/resource',
+      '/api/%252e%252e/secret',
+      '/api/%ZZ/secret',
+      '/api/report/%00hidden',
     ]
     for (const path of paths) {
       const response = await dispatch(new Request(`${APP_ORIGIN}${path}`, {
@@ -263,6 +285,29 @@ describe('browser management and Agent proxy', () => {
       }))
       expect([400, 403]).toContain(response.status)
     }
+
+    const interceptedLogin = await dispatch(new Request(`${APP_ORIGIN}/api/passport/login/signIn`, {
+      method: 'POST',
+      headers: {
+        'x-credential': created.token,
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      body: 'username=must-not-reach-login&userpwd=must-not-reach-login',
+    }))
+    expect(interceptedLogin.status).toBe(403)
+    expect(await interceptedLogin.json<{ error: { code: string } }>()).toMatchObject({
+      error: { code: 'UPSTREAM_AUTH_PATH_FORBIDDEN' },
+    })
+
+    const emptyCredential = await dispatch(new Request(`${APP_ORIGIN}/api/report/list`, {
+      headers: { 'x-credential': '' },
+    }))
+    expect(emptyCredential.status).toBe(401)
+
+    const removedLegacyRoute = await dispatch(new Request(`${APP_ORIGIN}/agent-api/report/list`, {
+      headers: { 'x-credential': created.token },
+    }))
+    expect(removedLegacyRoute.status).toBe(404)
     expect(fetchMock).not.toHaveBeenCalled()
 
     await expect(handleAgentProxy({ method: 'TRACE' } as Request, env, 'trace-id')).rejects.toMatchObject({ status: 405 })
@@ -291,7 +336,7 @@ describe('browser management and Agent proxy', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const response = await dispatch(new Request(
-      `${APP_ORIGIN}/agent-api/report/list?a=1&a=2&encoded=%2Fvalue`,
+      `${APP_ORIGIN}/api/report/list?a=1&a=2&encoded=%2Fvalue`,
       {
         headers: {
           'x-credential': created.token,
@@ -350,7 +395,7 @@ describe('browser management and Agent proxy', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    const response = await dispatch(new Request(`${APP_ORIGIN}/agent-api/report/list`, {
+    const response = await dispatch(new Request(`${APP_ORIGIN}/api/report/list`, {
       headers: { 'x-credential': created.token },
     }))
     expect(response.status).toBe(200)
@@ -374,7 +419,7 @@ describe('browser management and Agent proxy', () => {
       return Response.json({ success: true })
     }))
 
-    const response = await dispatch(new Request(`${APP_ORIGIN}/agent-api/report/list`, {
+    const response = await dispatch(new Request(`${APP_ORIGIN}/api/report/list`, {
       headers: { 'x-credential': created.token },
     }))
 
@@ -400,7 +445,7 @@ describe('browser management and Agent proxy', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    const response = await dispatch(new Request(`${APP_ORIGIN}/agent-api/scm/save`, {
+    const response = await dispatch(new Request(`${APP_ORIGIN}/api/scm/save`, {
       method: 'POST',
       headers: { 'x-credential': created.token, 'content-type': 'application/json' },
       body: '{}',
@@ -418,7 +463,7 @@ describe('browser management and Agent proxy', () => {
     const fetchMock = vi.fn(async () => Response.json({ success: true }))
     vi.stubGlobal('fetch', fetchMock)
 
-    const response = await dispatch(new Request(`${APP_ORIGIN}/agent-api/upload`, {
+    const response = await dispatch(new Request(`${APP_ORIGIN}/api/upload`, {
       method: 'POST',
       headers: { 'x-credential': created.token },
       body: new Uint8Array(4 * 1024 * 1024 + 1),
@@ -441,14 +486,14 @@ describe('browser management and Agent proxy', () => {
     }))
     vi.stubGlobal('fetch', fetchMock)
 
-    const first = await dispatch(new Request(`${APP_ORIGIN}/agent-api/report/list`, {
+    const first = await dispatch(new Request(`${APP_ORIGIN}/api/report/list`, {
       headers: { 'x-credential': created.token },
     }))
     const firstText = await first.text()
     expect(first.status).toBe(502)
     expect(firstText).not.toContain('sensitive upstream detail')
 
-    const second = await dispatch(new Request(`${APP_ORIGIN}/agent-api/report/list`, {
+    const second = await dispatch(new Request(`${APP_ORIGIN}/api/report/list`, {
       headers: { 'x-credential': created.token },
     }))
     expect(second.status).toBe(503)
@@ -481,11 +526,11 @@ describe('browser management and Agent proxy', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    const first = dispatch(new Request(`${APP_ORIGIN}/agent-api/report/one`, {
+    const first = dispatch(new Request(`${APP_ORIGIN}/api/report/one`, {
       headers: { 'x-credential': created.token },
     }))
     await loginStarted
-    const second = dispatch(new Request(`${APP_ORIGIN}/agent-api/report/two`, {
+    const second = dispatch(new Request(`${APP_ORIGIN}/api/report/two`, {
       headers: { 'x-credential': created.token },
     }))
     await new Promise((resolve) => setTimeout(resolve, 10))
@@ -499,7 +544,7 @@ describe('browser management and Agent proxy', () => {
   })
 
   it('returns sanitized errors for invalid tokens and corrupted encrypted KV records', async () => {
-    const invalid = await dispatch(new Request(`${APP_ORIGIN}/agent-api/report/list`, {
+    const invalid = await dispatch(new Request(`${APP_ORIGIN}/api/report/list`, {
       headers: { 'x-credential': 'not-a-token' },
     }))
     expect(invalid.status).toBe(401)
@@ -509,7 +554,7 @@ describe('browser management and Agent proxy', () => {
     await putAccountCredential(env, validAccount(ownerId))
     const created = await createAgentToken(env, ownerId, '损坏记录')
     await env.AGENT_AUTH_KV.put(accountKey(ownerId), '{"plaintext":"must-not-leak"}')
-    const corrupted = await dispatch(new Request(`${APP_ORIGIN}/agent-api/report/list`, {
+    const corrupted = await dispatch(new Request(`${APP_ORIGIN}/api/report/list`, {
       headers: { 'x-credential': created.token },
     }))
     const corruptedText = await corrupted.text()

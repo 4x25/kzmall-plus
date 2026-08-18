@@ -7,17 +7,17 @@
 Agent 请求格式：
 
 ```http
-POST /agent-api/<快准接口路径>?<原查询参数>
+POST /api/<快准接口路径>?<原查询参数>
 X-Credential: kza_v1_<43位base64url>
 Content-Type: application/json
 ```
 
-`/agent-api/<path>` 映射到 `${KZ_API_BASE}/<path>`。查询参数的顺序和重复键会保留。除 `CONNECT`、`TRACE` 及快准登录/退出路径外，标准 HTTP 方法和业务路径均可转发。
+`/api/<path>` 映射到 `${KZ_API_BASE}/<path>`。是否存在 `X-Credential` 决定请求走 Agent 认证还是浏览器 Cookie 代理；空的 `X-Credential` 也会进入 Agent 模式并被拒绝。查询参数的顺序和重复键会保留。除 `CONNECT`、`TRACE`、快准登录/退出路径和本地 Agent 凭证管理路径外，标准 HTTP 方法和业务路径均可转发。
 
 示例：
 
 ```bash
-curl 'https://<应用域名>/agent-api/report/invBalance?action=detail' \
+curl 'https://<应用域名>/api/report/invBalance?action=detail' \
   -H 'X-Credential: <创建时显示的Agent-Token>'
 ```
 
@@ -72,6 +72,8 @@ Token 本身是 32 字节安全随机不透明值。KV 只保存 Token 的 SHA-2
 |---:|---|---|
 | 400 | `INVALID_UPSTREAM_PATH` | 路径为空、非法编码、路径穿越或形似跨域 URL |
 | 401 | `INVALID_AGENT_CREDENTIAL` | Token 无效、已撤销或账号凭证已删除（响应消息为“凭证无效或已撤销”） |
+| 403 | `UPSTREAM_AUTH_PATH_FORBIDDEN` | Agent 请求命中快准登录或退出路径 |
+| 403 | `AGENT_MANAGEMENT_PATH_FORBIDDEN` | Agent 请求命中本地 Token 管理路径 |
 | 405 | `METHOD_NOT_ALLOWED` | 使用了 `CONNECT` 或 `TRACE` |
 | 413 | `REQUEST_BODY_TOO_LARGE` | 请求体超过 4 MiB |
 | 502 | `UPSTREAM_UNAVAILABLE` | 快准网络或响应流暂时不可用 |

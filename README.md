@@ -48,8 +48,9 @@ npm run deploy
 
 ## 接口入口
 
-- `/api/*`：浏览器会话代理；登录成功时额外签发 12 小时以内的 `kzp_mgmt` 管理 Cookie，并自动加密保存 Agent 所需的账号凭证与 Cookie jar。
+- `/api/*`：统一代理入口。无 `X-Credential` 时使用浏览器 Cookie；有该请求头时使用 Agent Token 和服务端 Cookie jar。网页登录成功时还会签发 `kzp_mgmt` 管理 Cookie，并自动加密保存 Agent 所需的账号凭证。
 - `/api/agent-credentials*`：管理当前登录账号的永久 Agent Token。
-- `/agent-api/*`：Agent 全权限代理，使用 `X-Credential`，不会向 Agent 暴露用户名、密码或快准 Cookie。
+
+Agent 与网页复用完全相同的 `/api/<快准接口路径>`；Agent 只需额外携带 `X-Credential`，不会获得用户名、密码或快准 Cookie。
 
 完整接入、安全边界和故障语义见 [Agent 凭证网关文档](docs/api/agent-gateway.md)。

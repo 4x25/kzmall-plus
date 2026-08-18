@@ -9,10 +9,10 @@
 
 - **Runtime**: Cloudflare Workers (Workerd), deployed via Wrangler.
 - **Frontend**: React SPA with React Router + TailwindCSS v4. Entry is `src/app/main.tsx` → `index.html`.
-- **API**: Hono v4 in `src/index.tsx` (default export). `/api/*` remains the browser Cookie proxy, while login/logout interception, Agent credential management and `/agent-api/*` now contain security logic in `src/server/`. The Worker injects `sun: 5516` for both proxy modes.
+- **API**: Hono v4 in `src/index.tsx` (default export). `/api/*` is the shared browser/Agent proxy: requests carrying `X-Credential` are intercepted before concrete routes and use Agent authentication; requests without it use the browser Cookie flow. Login/logout interception and Agent credential management contain additional security logic in `src/server/`. The Worker injects `sun: 5516` for both proxy modes.
 - **Dev server**: `vite` (not `wrangler dev`). The `@cloudflare/vite-plugin` runs the Worker inside Workerd during `npm run dev`.
 - **SPA routing**: `wrangler.jsonc` sets `assets.not_found_handling: "single-page-application"` so client-side routes work on Cloudflare.
-- **Worker entry**: `src/index.tsx` — this is both the Wrangler `main` and the Vite entry for the Cloudflare plugin. Only API routes should be added here. Static asset routing explicitly runs the Worker first for `/api/*` and `/agent-api/*`.
+- **Worker entry**: `src/index.tsx` — this is both the Wrangler `main` and the Vite entry for the Cloudflare plugin. Only API routes should be added here. Static asset routing explicitly runs the Worker first for `/api/*`.
 
 ## Architecture
 
@@ -76,15 +76,15 @@ No lint or format command exists yet. Tests run inside Workerd through `@cloudfl
 - **TailwindCSS v4 + daisyUI v5**: Uses `@import "tailwindcss"` (not `@tailwind` directives). Existing theme variables are defined via `@theme {}`; daisyUI components use the `kz-` prefix and the `kzmall` theme.
 - **Static assets** go in `public/`.
 - **Browser auth**: `AdminLayout` checks `isLoggedIn()` from `src/app/lib/auth.ts` (reads cookie `token`) and redirects to `/login` if false. Successful login also receives encrypted `kzp_mgmt` (`HttpOnly; Secure; SameSite=Strict`) and automatically stores the username, password and upstream Cookie jar as one encrypted Agent account record. Sessions created before this behavior was deployed must log out and back in once before creating Agent tokens.
-- **Agent auth**: Agent callers use `X-Credential: kza_v1_<opaque-token>` only at `/agent-api/*`. Never accept a username, password, Cookie or Authorization header from an Agent caller.
+- **Agent auth**: Agent callers use the same `/api/*` paths as the browser and add `X-Credential: kza_v1_<opaque-token>`. The presence of the header, including an empty value, selects Agent mode. Never accept a username, password, Cookie or Authorization header from an Agent caller.
 - **Credential secrecy**: Do not log usernames, passwords, Cookie values, Agent tokens/token hashes, request headers/bodies/query strings, business responses or raw decryption errors.
 
 ## 快准车服 Backend
 
 - This project calls 快准车服 enterprise APIs for data. Phase 1 needs auth/login against those APIs, plus inventory/sales endpoints.
 - Browser login flow: frontend `POST /api/passport/login/signIn` → Worker proxies to 快准车服 → after a proven successful login, Worker reuses that response to add `kzp_mgmt` and encrypt the submitted username/password plus Cookie jar into KV (without a second upstream login) → Worker strips `domain=` from upstream cookies → the browser carries its fast-session Cookie through `/api/*`.
-- Agent flow: `/agent-api/*` hashes the opaque token, decrypts the matching KV records, attaches the server-side Cookie jar and forwards with `redirect: "manual"`. Missing/near-expiry or explicitly invalid sessions trigger a fresh upstream login. The original request, including writes, is replayed at most once.
+- Agent flow: `/api/*` requests with `X-Credential` hash the opaque token, decrypt the matching KV records, attach the server-side Cookie jar and forward with `redirect: "manual"`. Missing/near-expiry or explicitly invalid sessions trigger a fresh upstream login. The original request, including writes, is replayed at most once.
 - Agent requests are limited to 4 MiB so their bytes can be replayed. Upstream responses remain streamed after a bounded 64 KiB authentication inspection.
-- `/passport/login/signIn`, `/passport/login/signOut`, path traversal/cross-origin-shaped paths, `CONNECT`, and `TRACE` are forbidden through `/agent-api/*`.
+- `/passport/login/signIn`, `/passport/login/signOut`, local `/api/agent-credentials*` management paths, path traversal/cross-origin-shaped paths, `CONNECT`, and `TRACE` are forbidden in Agent mode.
 - Agent tokens are permanent and full-permission until revoked/rotated or the account credential is deleted. Browser logout does not revoke them. KV propagation can take about 60 seconds; write replay can duplicate a successful operation.
 - `KZ_API_BASE` is a wrangler var (default `https://dgj8.kzmall.cc/index.php`), overridable via `.dev.vars` or Cloudflare dashboard.

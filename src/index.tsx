@@ -38,6 +38,13 @@ app.use('*', async (c, next) => {
   })
 })
 
+app.use('/api/*', async (c, next) => {
+  if (c.req.raw.headers.has('x-credential')) {
+    return handleAgentProxy(c.req.raw, c.env, c.get('requestId'))
+  }
+  await next()
+})
+
 app.post('/api/passport/login/signIn', (c) => (
   handleBrowserLogin(c.req.raw, c.env, c.get('requestId'))
 ))
@@ -72,14 +79,6 @@ app.post('/api/agent-credentials/:id/rotate', (c) => (
 
 app.delete('/api/agent-credentials/:id', (c) => (
   revokeCredentialToken(c.req.raw, c.env, c.get('requestId'), c.req.param('id'))
-))
-
-app.all('/agent-api/*', (c) => (
-  handleAgentProxy(c.req.raw, c.env, c.get('requestId'))
-))
-
-app.all('/agent-api', (c) => (
-  handleAgentProxy(c.req.raw, c.env, c.get('requestId'))
 ))
 
 app.all('/api/*', (c) => (

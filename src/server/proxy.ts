@@ -283,7 +283,7 @@ export async function handleBrowserLogout(request: Request, env: ProxyEnv, reque
 
 export function extractAgentPath(request: Request): { apiPath: string; search: string } {
   const url = new URL(request.url)
-  const prefix = '/agent-api/'
+  const prefix = '/api/'
   if (!url.pathname.startsWith(prefix)) throw new AppError(404, 'AGENT_PATH_NOT_FOUND', 'Agent 接口不存在')
   const encodedPath = url.pathname.slice(prefix.length)
   if (!encodedPath
@@ -311,6 +311,9 @@ export function extractAgentPath(request: Request): { apiPath: string; search: s
   const normalized = `/${decodedPath.replace(/\/{2,}/g, '/')}`
   if (/^\/passport\/login\/(?:signIn|signOut)\/?$/i.test(normalized)) {
     throw new AppError(403, 'UPSTREAM_AUTH_PATH_FORBIDDEN', 'Agent 不允许调用快准登录或退出接口')
+  }
+  if (/^\/agent-credentials(?:\/|$)/i.test(normalized)) {
+    throw new AppError(403, 'AGENT_MANAGEMENT_PATH_FORBIDDEN', 'Agent 不允许调用本地凭证管理接口')
   }
   return { apiPath: encodedPath, search: url.search }
 }

@@ -17,9 +17,9 @@
 
 ## 使用约定
 
-- 文档中的路径均相对于快准车服基地址 `https://dgj8.kzmall.cc/index.php`。浏览器调用时在前面加 `/api`；AI Agent 调用时在前面加 `/agent-api` 并提供 `X-Credential`。
+- 文档中的路径均相对于快准车服基地址 `https://dgj8.kzmall.cc/index.php`。浏览器和 AI Agent 调用时都在前面加 `/api`；Agent 额外提供 `X-Credential`。
 - 页面会话使用 Cookie 鉴权。不要把 Cookie、Token、用户信息或真实业务记录写入日志、提示词或持久化文档。
-- 浏览器把现有登录 Cookie 发送给 `/api/*`。Agent 只向 `/agent-api/*` 发送不透明 Token；Worker 在服务端解密账号凭证、维护 Cookie jar、自动重新登录，并统一注入请求头 `sun: 5516`。Agent 永远不应读取或接收快准 Cookie、用户名和密码。
+- 浏览器把现有登录 Cookie 发送给 `/api/*`。Agent 在同一路径只发送不透明 `X-Credential` Token；Worker 在服务端解密账号凭证、维护 Cookie jar、自动重新登录，并统一注入请求头 `sun: 5516`。Agent 永远不应读取或接收快准 Cookie、用户名和密码。
 - Agent 网关技术上具有全权限并会对失效会话后的写请求重放一次；本查询文档仍只认可 A/B 级只读调用。任何写操作都必须另行审核重复执行风险。
 - `nd` 是页面生成的时间戳型防缓存参数，不属于业务过滤条件。
 - jqGrid 风格接口常用 `_search`、`rows`、`page`、`sidx`、`sord` 处理搜索、分页和排序。
