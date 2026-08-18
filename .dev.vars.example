@@ -1,0 +1,4 @@
+# Only the names declared by `secrets.required` are loaded from this file.
+# Non-secret variables are configured per environment in wrangler.jsonc.
+AGENT_CREDENTIAL_ROOT_KEY_V1=<32-byte-base64url-key>
+MANAGEMENT_SESSION_ROOT_KEY_V1=<different-32-byte-base64url-key>

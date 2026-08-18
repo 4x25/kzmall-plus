@@ -133,7 +133,11 @@ export function InventoryTable({ data, sorting, onSortingChange, onExport }: Inv
     state: { sorting, pagination, columnVisibility },
     onSortingChange,
     onPaginationChange: setPagination,
-    onColumnVisibilityChange: setColumnVisibility,
+    onColumnVisibilityChange: (updater) => {
+      setColumnVisibility((current = {}) => (
+        typeof updater === 'function' ? updater(current) : updater
+      ))
+    },
     isMultiSortEvent: () => true,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),

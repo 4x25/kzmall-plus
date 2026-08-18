@@ -12,7 +12,7 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-  type TooltipProps,
+  type TooltipContentProps,
 } from 'recharts'
 import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert'
 import { Button } from '../components/ui/button'
@@ -72,14 +72,14 @@ function formatCurrency(value: number) {
   }).format(value)
 }
 
-function TooltipContent({ active, payload, label }: TooltipProps<number, string>) {
+function TooltipContent({ active, payload, label }: Partial<TooltipContentProps<number, string>>) {
   if (!active || !payload?.length) return null
 
   return (
     <div className="rounded-lg border bg-background p-3 text-sm shadow-sm">
       <div className="mb-2 font-medium">{label}</div>
-      {payload.map((item) => (
-        <div key={item.dataKey} className="flex items-center justify-between gap-6 text-muted-foreground">
+      {payload.map((item, index) => (
+        <div key={`${String(item.dataKey ?? item.name ?? 'metric')}-${index}`} className="flex items-center justify-between gap-6 text-muted-foreground">
           <span>{item.name}</span>
           <span className="font-medium text-foreground">{formatCurrency(Number(item.value ?? 0))}</span>
         </div>

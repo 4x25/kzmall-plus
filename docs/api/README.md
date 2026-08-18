@@ -4,6 +4,7 @@
 
 ## 文档导航
 
+- [AI Agent 凭证网关与接入说明](./agent-gateway.md)
 - [采集方法与安全边界](./methodology.md)
 - [查询入口覆盖矩阵](./catalog.md)
 - [共享辅助查询接口](./shared.md)
@@ -16,9 +17,10 @@
 
 ## 使用约定
 
-- 文档中的路径均相对于快准车服基地址 `https://dgj8.kzmall.cc/index.php`；本项目通过 `/api/*` 薄代理调用时去掉该基地址并在前面加 `/api`。
+- 文档中的路径均相对于快准车服基地址 `https://dgj8.kzmall.cc/index.php`。浏览器调用时在前面加 `/api`；AI Agent 调用时在前面加 `/agent-api` 并提供 `X-Credential`。
 - 页面会话使用 Cookie 鉴权。不要把 Cookie、Token、用户信息或真实业务记录写入日志、提示词或持久化文档。
-- 在本项目中，浏览器把现有登录 Cookie 发送给 `/api/*`，Worker 透传 Cookie 并统一注入请求头 `sun: 5516`。前端 Agent 不应自行读取 Cookie，也不应在业务请求里硬编码或展示认证信息。
+- 浏览器把现有登录 Cookie 发送给 `/api/*`。Agent 只向 `/agent-api/*` 发送不透明 Token；Worker 在服务端解密账号凭证、维护 Cookie jar、自动重新登录，并统一注入请求头 `sun: 5516`。Agent 永远不应读取或接收快准 Cookie、用户名和密码。
+- Agent 网关技术上具有全权限并会对失效会话后的写请求重放一次；本查询文档仍只认可 A/B 级只读调用。任何写操作都必须另行审核重复执行风险。
 - `nd` 是页面生成的时间戳型防缓存参数，不属于业务过滤条件。
 - jqGrid 风格接口常用 `_search`、`rows`、`page`、`sidx`、`sord` 处理搜索、分页和排序。
 - 页面虽可能使用 `POST` 执行查询，仍应按“只读查询”对待；不得把路径或参数改造成保存、编辑、删除、审核、导入、调拨、开单等动作。

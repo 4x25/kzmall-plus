@@ -1,12 +1,52 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "kzmall-plus",
-  "compatibility_date": "2025-08-03",
+  "compatibility_date": "2026-08-17",
+  "compatibility_flags": ["nodejs_compat"],
   "main": "./src/index.tsx",
   "assets": {
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/agent-api", "/agent-api/*"]
   },
   "vars": {
-    "KZ_API_BASE": "https://dgj8.kzmall.cc/index.php"
+    "KZ_API_BASE": "https://dgj8.kzmall.cc/index.php",
+    "APP_ENV": "production",
+    "AGENT_API_ENABLED": "false"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "AGENT_AUTH_KV"
+    }
+  ],
+  "secrets": {
+    "required": [
+      "AGENT_CREDENTIAL_ROOT_KEY_V1",
+      "MANAGEMENT_SESSION_ROOT_KEY_V1"
+    ]
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "env": {
+    "development": {
+      "name": "kzmall-plus-development",
+      "vars": {
+        "KZ_API_BASE": "https://dgj8.kzmall.cc/index.php",
+        "APP_ENV": "development",
+        "AGENT_API_ENABLED": "false"
+      },
+      "kv_namespaces": [
+        {
+          "binding": "AGENT_AUTH_KV"
+        }
+      ],
+      "secrets": {
+        "required": [
+          "AGENT_CREDENTIAL_ROOT_KEY_V1",
+          "MANAGEMENT_SESSION_ROOT_KEY_V1"
+        ]
+      }
+    }
   }
 }

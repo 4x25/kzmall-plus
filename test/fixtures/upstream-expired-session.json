@@ -1,0 +1,8 @@
+{
+  "description": "2026-08-17 real expired-cookie response, reduced to its non-sensitive structural signal",
+  "status": 200,
+  "headers": {
+    "content-type": "text/html"
+  },
+  "body": "<script>window.location.href='/index.php/index.php/passport/login/index';</script>"
+}
