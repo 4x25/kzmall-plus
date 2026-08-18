@@ -68,7 +68,7 @@ No lint or format command exists yet. Tests run inside Workerd through `@cloudfl
 - Current vars: `KZ_API_BASE`, `APP_ENV`, and `AGENT_API_ENABLED`.
 - KV binding: `AGENT_AUTH_KV`. Top-level production and `development` environments auto-provision separate namespaces; local Vite/Workerd data is local-only.
 - Required Worker Secrets: `AGENT_CREDENTIAL_ROOT_KEY_V1` and `MANAGEMENT_SESSION_ROOT_KEY_V1`. Each is a distinct 32-byte base64url value. Never commit either value.
-- `AGENT_API_ENABLED` defaults to `false`; do not enable it before test-account validation.
+- `AGENT_API_ENABLED` is enabled for the validated production and `development` deployments. New environments must start at `false` until test-account validation is complete.
 
 ## Key Conventions
 

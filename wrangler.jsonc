@@ -11,7 +11,7 @@
   "vars": {
     "KZ_API_BASE": "https://dgj8.kzmall.cc/index.php",
     "APP_ENV": "production",
-    "AGENT_API_ENABLED": "false"
+    "AGENT_API_ENABLED": "true"
   },
   "kv_namespaces": [
     {
@@ -34,7 +34,7 @@
       "vars": {
         "KZ_API_BASE": "https://dgj8.kzmall.cc/index.php",
         "APP_ENV": "development",
-        "AGENT_API_ENABLED": "false"
+        "AGENT_API_ENABLED": "true"
       },
       "kv_namespaces": [
         {

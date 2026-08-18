@@ -99,7 +99,7 @@ Token 本身是 32 字节安全随机不透明值。KV 只保存 Token 的 SHA-2
 
 ## 运维边界
 
-- `AGENT_API_ENABLED` 默认必须保持 `false`，在测试账号完成过期响应验证后再开启。
+- 已验证的 production 与 `development` 环境启用 `AGENT_API_ENABLED`；新增环境必须先保持 `false`，在测试账号完成过期响应验证后再开启。
 - `AGENT_CREDENTIAL_ROOT_KEY_V1` 与 `MANAGEMENT_SESSION_ROOT_KEY_V1` 必须是不同的 32 字节 base64url Worker Secret。
 - `APP_ENV` 参与 HKDF 与密文 AAD；已写入数据后不能随意修改，否则旧记录会受控地解密失败。
 - 不同环境必须使用不同 KV namespace 和 root key。不能把生产 KV 复制到开发环境使用。

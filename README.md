@@ -44,7 +44,7 @@ npm run deploy:development
 npm run deploy
 ```
 
-`AGENT_API_ENABLED` 默认是 `false`。完成测试账号验证后，在对应 Cloudflare 环境中改为 `true` 再部署。
+`AGENT_API_ENABLED` 在已验证的 production 与 `development` 环境中为 `true`。新增环境应先保持 `false`，完成测试账号验证后再开启。
 
 ## 接口入口
 
