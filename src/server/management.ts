@@ -203,7 +203,13 @@ export async function createCredentialToken(
   requireSameOriginJson(request)
   const context = await requireManagementContext(env, request)
   const account = await getAccountCredential(env, context.ownerId)
-  if (!account) throw new AppError(409, 'ACCOUNT_CREDENTIAL_REQUIRED', '请先绑定快准账号凭证')
+  if (!account) {
+    throw new AppError(
+      409,
+      'ACCOUNT_CREDENTIAL_REQUIRED',
+      '当前登录尚未同步 Agent 凭证，请退出后重新登录一次',
+    )
+  }
   const name = readTokenName(await readJsonBody(request))
 
   try {

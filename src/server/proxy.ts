@@ -1,4 +1,5 @@
 import { buildCookieHeader, findTokenCookie, getSetCookieHeaders, mergeSetCookieHeaders, rewriteBrowserSetCookie } from './cookies'
+import { normalizeUsername } from './crypto'
 import { AppError, logEvent } from './errors'
 import { createManagementCookie, clearManagementCookie } from './management-session'
 import {
@@ -12,6 +13,7 @@ import {
 import {
   BodyTooLargeError,
   buildUpstreamUrl,
+  createUpstreamSession,
   inspectSmallJsonResponse,
   inspectUpstreamAuthFailure,
   loginToUpstream,
@@ -195,11 +197,13 @@ export async function handleBrowserLogin(request: Request, env: ProxyEnv, reques
     let managementIssued = false
     if (body) {
       const form = new URLSearchParams(new TextDecoder().decode(body))
-      const username = form.get('username')?.trim() ?? ''
+      const username = normalizeUsername(form.get('username') ?? '')
+      const password = form.get('userpwd') ?? ''
       const now = Date.now()
       const merged = mergeSetCookieHeaders([], getSetCookieHeaders(response.headers), target, now)
       const tokenCookie = findTokenCookie(merged.cookieJar, now)
       if (username && tokenCookie) {
+        let ownerId: string | null = null
         try {
           const management = await createManagementCookie(
             env,
@@ -207,9 +211,42 @@ export async function handleBrowserLogin(request: Request, env: ProxyEnv, reques
             tokenCookie.expiresAt,
           )
           extraCookies.push(management.header)
+          ownerId = management.ownerId
           managementIssued = true
         } catch {
           logEvent('error', 'management_session_issue_failed', { requestId, method: 'POST', path: '/api/passport/login/signIn' })
+        }
+
+        // Reuse this proven login instead of asking the user for their password
+        // again or performing a second upstream login. Credential persistence is
+        // best-effort so a transient KV failure never breaks normal browser login.
+        if (ownerId && password) {
+          try {
+            const record: AccountCredentialRecord = {
+              version: 1,
+              ownerId,
+              username,
+              password,
+              session: createUpstreamSession(merged.cookieJar, now),
+              lastValidatedAt: now,
+            }
+            await putAccountCredential(env, record)
+            try {
+              await clearReauthCooldown(env, ownerId)
+            } catch {
+              logEvent('error', 'reauth_cooldown_clear_failed', {
+                requestId,
+                method: 'POST',
+                path: '/api/passport/login/signIn',
+              })
+            }
+          } catch {
+            logEvent('error', 'account_credential_sync_failed', {
+              requestId,
+              method: 'POST',
+              path: '/api/passport/login/signIn',
+            })
+          }
         }
       }
     }
@@ -315,7 +352,7 @@ async function performAccountSessionRefresh(
     if (error instanceof UpstreamUnavailableError) {
       throw new AppError(502, 'UPSTREAM_UNAVAILABLE', '快准服务暂时不可用')
     }
-    throw new AppError(502, 'UPSTREAM_REAUTH_FAILED', '快准登录失败，请在 Token 管理页更新账号凭证')
+    throw new AppError(502, 'UPSTREAM_REAUTH_FAILED', '快准登录失败，请退出后重新登录以更新凭证')
   }
 }
 
@@ -348,7 +385,7 @@ async function refreshAccountSession(
     await existing.done
     if (existing.result) return existing.result
     if (existing.error) throw existing.error
-    throw new AppError(502, 'UPSTREAM_REAUTH_FAILED', '快准登录失败，请在 Token 管理页更新账号凭证')
+    throw new AppError(502, 'UPSTREAM_REAUTH_FAILED', '快准登录失败，请退出后重新登录以更新凭证')
   }
 
   let resolveFlight!: () => void

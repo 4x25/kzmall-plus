@@ -2,7 +2,7 @@
 
 ## 接入方式
 
-在“Agent Token”页面先验证并加密保存当前快准账号密码，再创建一枚命名 Token。Token 原文仅在创建或轮换成功的响应中显示一次。
+正常登录系统成功后，Worker 会复用这次快准登录结果，自动加密保存当前账号、密码和 Cookie jar，不会再发起一次登录。随后可直接在“Agent Token”页面创建命名 Token；Token 原文仅在创建或轮换成功的响应中显示一次。若会话在该功能上线前已登录，需要退出后重新登录一次完成自动同步。
 
 Agent 请求格式：
 
@@ -75,7 +75,7 @@ Token 本身是 32 字节安全随机不透明值。KV 只保存 Token 的 SHA-2
 | 405 | `METHOD_NOT_ALLOWED` | 使用了 `CONNECT` 或 `TRACE` |
 | 413 | `REQUEST_BODY_TOO_LARGE` | 请求体超过 4 MiB |
 | 502 | `UPSTREAM_UNAVAILABLE` | 快准网络或响应流暂时不可用 |
-| 502 | `UPSTREAM_REAUTH_FAILED` | 保存的快准密码失效，需要在管理页更新 |
+| 502 | `UPSTREAM_REAUTH_FAILED` | 保存的快准密码失效，需要退出后重新登录以更新 |
 | 502 | `UPSTREAM_AUTH_FAILED` | 自动登录后的单次重放仍被拒绝 |
 | 503 | `AGENT_API_DISABLED` | 当前环境未启用 Agent 入口 |
 | 503 | `UPSTREAM_REAUTH_COOLDOWN` | 登录失败后的 30 秒冷却期，可读取 `Retry-After` |
@@ -90,8 +90,8 @@ Token 本身是 32 字节安全随机不透明值。KV 只保存 Token 的 SHA-2
 | 方法与路径 | JSON 请求 | 行为 |
 |---|---|---|
 | `GET /api/agent-credentials` | — | 返回脱敏账号状态和 Token 元数据 |
-| `PUT /api/agent-credentials/account` | `{ "password": "..." }` | 登录快准并加密保存或更新凭证 |
-| `DELETE /api/agent-credentials/account` | `{}` | 删除凭证并撤销全部 Token |
+| `PUT /api/agent-credentials/account` | `{ "password": "..." }` | 兼容/运维接口：登录快准并加密保存或更新凭证（常规页面不使用） |
+| `DELETE /api/agent-credentials/account` | `{}` | 兼容/运维接口：删除凭证并撤销全部 Token（常规页面不使用） |
 | `POST /api/agent-credentials` | `{ "name": "..." }` | 创建 Token，原文仅本次返回 |
 | `PATCH /api/agent-credentials/:id` | `{ "name": "..." }` | 修改名称 |
 | `POST /api/agent-credentials/:id/rotate` | `{}` | 轮换，原文仅本次返回 |

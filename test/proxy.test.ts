@@ -78,12 +78,22 @@ describe('browser management and Agent proxy', () => {
     expect(setCookies.find((cookie) => cookie.startsWith('token='))).not.toContain('Domain=')
 
     const cookieHeader = `token=browser-session; ${managementCookie?.split(';')[0]}`
-    const accountUpdate = await dispatch(new Request(`${APP_ORIGIN}/api/agent-credentials/account`, {
-      method: 'PUT',
-      headers: { cookie: cookieHeader, origin: APP_ORIGIN, 'content-type': 'application/json' },
-      body: JSON.stringify({ password: 'test-password' }),
-    }))
-    expect(accountUpdate.status).toBe(200)
+    const accountPrefix = accountKey('')
+    const accountKeys = await env.AGENT_AUTH_KV.list({ prefix: accountPrefix })
+    expect(accountKeys.keys).toHaveLength(1)
+    const storedOwnerId = accountKeys.keys[0].name.slice(accountPrefix.length)
+    const storedAccount = await getAccountCredential(env, storedOwnerId)
+    expect(storedAccount).toMatchObject({
+      username: 'test-user',
+      password: 'test-password',
+      session: {
+        cookieJar: [expect.objectContaining({ name: 'token', value: 'browser-session' })],
+      },
+    })
+    const encryptedAccount = await env.AGENT_AUTH_KV.get(accountKeys.keys[0].name)
+    expect(encryptedAccount).not.toContain('test-user')
+    expect(encryptedAccount).not.toContain('test-password')
+    expect(encryptedAccount).not.toContain('browser-session')
 
     const create = await dispatch(new Request(`${APP_ORIGIN}/api/agent-credentials`, {
       method: 'POST',
@@ -117,6 +127,10 @@ describe('browser management and Agent proxy', () => {
     expect(businessHeaders?.get('x-credential')).toBeNull()
     expect(businessHeaders?.get('authorization')).toBeNull()
     expect(businessHeaders?.get('sun')).toBe('5516')
+    const signInCalls = fetchMock.mock.calls.filter(([input]) => (
+      new URL(String(input)).pathname.endsWith('/passport/login/signIn')
+    ))
+    expect(signInCalls).toHaveLength(1)
   })
 
   it('clears a stale management session when a successful login cannot issue a replacement', async () => {

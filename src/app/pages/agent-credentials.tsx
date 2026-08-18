@@ -3,7 +3,6 @@ import {
   Bot,
   Check,
   Copy,
-  KeyRound,
   Loader2,
   Pencil,
   RefreshCw,
@@ -14,9 +13,7 @@ import {
 } from 'lucide-react'
 
 interface AccountMetadata {
-  usernameHint: string
   credentialConfigured: boolean
-  lastValidatedAt: number | null
 }
 
 interface TokenMetadata {
@@ -92,7 +89,6 @@ function formatTime(value: number | null): string {
 
 export function AgentCredentialsPage() {
   const [snapshot, setSnapshot] = useState<ManagementSnapshot | null>(null)
-  const [password, setPassword] = useState('')
   const [newTokenName, setNewTokenName] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState('')
@@ -135,20 +131,6 @@ export function AgentCredentialsPage() {
     }
   }
 
-  const bindCredential = async (event: React.FormEvent) => {
-    event.preventDefault()
-    if (!password) {
-      setError('请输入快准账号密码')
-      return
-    }
-    await runAction('account', async () => {
-      await apiRequest('/api/agent-credentials/account', jsonInit('PUT', { password }))
-      setPassword('')
-      setNotice('快准账号凭证已加密保存')
-      await load()
-    })
-  }
-
   const createToken = async (event: React.FormEvent) => {
     event.preventDefault()
     const name = newTokenName.trim()
@@ -156,6 +138,7 @@ export function AgentCredentialsPage() {
       setError('请输入 Token 名称')
       return
     }
+    if (!window.confirm('此 Token 永久有效且拥有完整快准账号权限，写请求可能自动重放一次。继续创建吗？')) return
     await runAction('create', async () => {
       const created = await apiRequest<TokenSecretResponse>(
         '/api/agent-credentials',
@@ -203,15 +186,6 @@ export function AgentCredentialsPage() {
     })
   }
 
-  const deleteAll = async () => {
-    if (!window.confirm('将撤销全部 Agent Token，并删除保存的快准密码与 Cookie。确定继续吗？')) return
-    await runAction('delete-account', async () => {
-      await apiRequest('/api/agent-credentials/account', jsonInit('DELETE', {}))
-      setNotice('全部 Agent Token 和已保存凭证已删除')
-      await load()
-    })
-  }
-
   const copySecret = async () => {
     if (!secret) return
     try {
@@ -246,14 +220,6 @@ export function AgentCredentialsPage() {
         </button>
       </div>
 
-      <div role="alert" className="kz-alert kz-alert-warning">
-        <ShieldAlert className="size-5" />
-        <div>
-          <div className="font-semibold">这是永久有效的完整账号权限</div>
-          <div className="text-sm opacity-80">持有 Token 的 Agent 可调用快准全部业务接口；会话失效后写请求也会自动重放一次。</div>
-        </div>
-      </div>
-
       {error && (
         <div role="alert" className="kz-alert kz-alert-error">
           <X className="size-5" />
@@ -267,54 +233,8 @@ export function AgentCredentialsPage() {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-        <section className="kz-card kz-card-border bg-base-100">
-          <div className="kz-card-body">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="kz-card-title text-lg"><KeyRound className="size-5" />快准账号凭证</h2>
-                <p className="mt-1 text-sm text-base-content/60">密码只会在 Worker 中加密后写入 KV</p>
-              </div>
-              <span className={`kz-badge ${accountReady ? 'kz-badge-success' : 'kz-badge-warning'}`}>
-                {accountReady ? '已绑定' : '未绑定'}
-              </span>
-            </div>
-
-            <dl className="mt-4 grid gap-3 rounded-box bg-base-200 p-4 text-sm">
-              <div className="flex justify-between gap-4"><dt className="text-base-content/60">当前账号</dt><dd>{snapshot?.account.usernameHint ?? '—'}</dd></div>
-              <div className="flex justify-between gap-4"><dt className="text-base-content/60">最近验证</dt><dd>{formatTime(snapshot?.account.lastValidatedAt ?? null)}</dd></div>
-            </dl>
-
-            <form className="mt-4 space-y-3" onSubmit={(event) => void bindCredential(event)}>
-              <label className="block text-sm font-medium" htmlFor="agent-account-password">快准账号密码</label>
-              <input
-                id="agent-account-password"
-                type="password"
-                className="kz-input w-full"
-                autoComplete="current-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder={accountReady ? '输入密码以更新已保存凭证' : '输入密码以绑定账号'}
-                disabled={busy !== null}
-              />
-              <button type="submit" className="kz-btn w-full" disabled={busy !== null || !password}>
-                {busy === 'account' && <Loader2 className="size-4 animate-spin" />}
-                {accountReady ? '验证并更新凭证' : '验证并保存凭证'}
-              </button>
-            </form>
-
-            {accountReady && (
-              <div className="kz-card-actions mt-5 border-t border-base-300 pt-5">
-                <button type="button" className="kz-btn kz-btn-error kz-btn-outline kz-btn-sm" disabled={busy !== null} onClick={() => void deleteAll()}>
-                  <Trash2 className="size-4" />撤销全部并删除凭证
-                </button>
-              </div>
-            )}
-          </div>
-        </section>
-
-        <section className="kz-card kz-card-border bg-base-100">
-          <div className="kz-card-body">
+      <section className="kz-card kz-card-border bg-base-100">
+        <div className="kz-card-body">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h2 className="kz-card-title text-lg">Agent Token</h2>
@@ -337,10 +257,10 @@ export function AgentCredentialsPage() {
               </button>
             </form>
 
-            {!accountReady ? (
-              <div role="status" className="kz-alert mt-5"><KeyRound className="size-5" /><span>请先验证并保存快准账号凭证</span></div>
-            ) : busy === 'load' && !snapshot ? (
+            {busy === 'load' && !snapshot ? (
               <div className="flex items-center justify-center gap-2 py-12 text-base-content/60"><Loader2 className="size-5 animate-spin" />加载中…</div>
+            ) : snapshot === null ? null : !accountReady ? (
+              <p role="status" className="mt-5 text-sm text-warning">当前登录尚未同步 Agent 凭证，请退出后重新登录一次。</p>
             ) : snapshot?.tokens.length === 0 ? (
               <div className="py-12 text-center text-sm text-base-content/60">尚未创建 Agent Token</div>
             ) : (
@@ -375,9 +295,8 @@ export function AgentCredentialsPage() {
                 </table>
               </div>
             )}
-          </div>
-        </section>
-      </div>
+        </div>
+      </section>
 
       <dialog
         id="agent-token-secret-dialog"

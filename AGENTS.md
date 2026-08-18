@@ -75,14 +75,14 @@ No lint or format command exists yet. Tests run inside Workerd through `@cloudfl
 - **No SSR**: This is a pure SPA. All pages render client-side via React Router. Hono only serves API routes.
 - **TailwindCSS v4 + daisyUI v5**: Uses `@import "tailwindcss"` (not `@tailwind` directives). Existing theme variables are defined via `@theme {}`; daisyUI components use the `kz-` prefix and the `kzmall` theme.
 - **Static assets** go in `public/`.
-- **Browser auth**: `AdminLayout` checks `isLoggedIn()` from `src/app/lib/auth.ts` (reads cookie `token`) and redirects to `/login` if false. Successful login also receives encrypted `kzp_mgmt` (`HttpOnly; Secure; SameSite=Strict`); old sessions must log in again before managing Agent credentials.
+- **Browser auth**: `AdminLayout` checks `isLoggedIn()` from `src/app/lib/auth.ts` (reads cookie `token`) and redirects to `/login` if false. Successful login also receives encrypted `kzp_mgmt` (`HttpOnly; Secure; SameSite=Strict`) and automatically stores the username, password and upstream Cookie jar as one encrypted Agent account record. Sessions created before this behavior was deployed must log out and back in once before creating Agent tokens.
 - **Agent auth**: Agent callers use `X-Credential: kza_v1_<opaque-token>` only at `/agent-api/*`. Never accept a username, password, Cookie or Authorization header from an Agent caller.
 - **Credential secrecy**: Do not log usernames, passwords, Cookie values, Agent tokens/token hashes, request headers/bodies/query strings, business responses or raw decryption errors.
 
 ## 快准车服 Backend
 
 - This project calls 快准车服 enterprise APIs for data. Phase 1 needs auth/login against those APIs, plus inventory/sales endpoints.
-- Browser login flow: frontend `POST /api/passport/login/signIn` → Worker proxies to 快准车服 → Worker strips `domain=` from upstream cookies and, after a proven successful login, adds `kzp_mgmt` → the browser carries its fast-session Cookie through `/api/*`.
+- Browser login flow: frontend `POST /api/passport/login/signIn` → Worker proxies to 快准车服 → after a proven successful login, Worker reuses that response to add `kzp_mgmt` and encrypt the submitted username/password plus Cookie jar into KV (without a second upstream login) → Worker strips `domain=` from upstream cookies → the browser carries its fast-session Cookie through `/api/*`.
 - Agent flow: `/agent-api/*` hashes the opaque token, decrypts the matching KV records, attaches the server-side Cookie jar and forwards with `redirect: "manual"`. Missing/near-expiry or explicitly invalid sessions trigger a fresh upstream login. The original request, including writes, is replayed at most once.
 - Agent requests are limited to 4 MiB so their bytes can be replayed. Upstream responses remain streamed after a bounded 64 KiB authentication inspection.
 - `/passport/login/signIn`, `/passport/login/signOut`, path traversal/cross-origin-shaped paths, `CONNECT`, and `TRACE` are forbidden through `/agent-api/*`.
