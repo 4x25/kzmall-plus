@@ -8,8 +8,9 @@
 
 1. 先确定**消费页面和主查询参数**，再选择本页对应的选项接口；不能仅凭 `Id`、`No` 后缀猜字段。
 2. 同一选项通常同时提供 `id`、`number` 和 `name`。`id` 是内部主键，`number` 是业务编码，`name` 只用于显示；主查询具体取哪一个由页面绑定决定。
-3. 多选参数沿用主查询文档规定的序列化形式：逗号分隔、集合、或 JSON 数组字符串。不要把显示名拼进 ID 集合。
-4. 下表中的 A 表示请求、响应字段和消费绑定均已确认；B 表示接口和页面绑定已确认，但当前响应为空或原始载荷经过站点编码，类型仍需保守处理。
+3. 多选参数必须沿用主查询文档写明的精确线格式，例如逗号分隔或 JSON 数组字符串。“集合”不是一种可执行格式；没有最终字节示例时，Agent 不得暴露该筛选。不要把显示名拼进 ID 集合。
+4. 下表中的 A/B 是证据等级，不是线路状态。标注“页面会话依赖”的候选即使为 A，也不能由纯 HTTP Agent 解码；标注“筛选隐藏”的参数只能保持文档默认空值。
+5. 选项接口也必须检查本节写明的业务成功条件和候选容器；没有成功条件或容器类型不符时 fail closed，不能把 HTTP 200 或空响应直接当成“没有候选”。
 
 ## 参数到选项接口总表
 
@@ -32,20 +33,23 @@
 | 随微仓取得的 `contact_id` | 微仓库存 | 同上 | `data.list[].contactId` | `contactName` | B |
 | `wayId` | 结算方式 | `GET /basedata/assist/getAssistList`，条目 `typeNumber=PayMethod` | `data[].id` | `name` | A |
 | `accountNo` | **现金银行报表**的结算账户条件 | `GET /basedata/settAcct?action=list` | `data.items[].number` | `name` | A |
-| `goods` / `goodsNo` | 库存余额、商品收发报表 | 商品选择器：`GET /basedata/inventory?action=kzlist...` | `goods=id`；`goodsNo=number` | `name` / `goods_sale_name` | A；原始载荷编码 |
-| `goodsNo` | 销售明细表、销售汇总表 | 同一商品选择器 | `id` | `name` / `goods_sale_name` | A；参数名虽为 `No`，这里不是 `number` |
-| `inv_ids` | 套包商品过滤 | 同一商品选择器 | `id` | `name` / `goods_sale_name` | A；原始载荷编码 |
-| `skuId` | 需要物料/SKU 精确值的查询 | 同一商品列表行 | `skuId` | 商品名，可同时展示 `number` | A；不要用商品 `id` 代替 |
+| `goods` / `goodsNo` | 库存余额、商品收发报表 | 商品选择器：`GET /basedata/inventory?action=kzlist...` | `goods=id`；`goodsNo=number` | `name` / `goods_sale_name` | A；页面会话依赖 |
+| `goodsNo` | 销售明细表、销售汇总表 | 同一商品选择器 | `id` | `name` / `goods_sale_name` | A；页面会话依赖；参数名虽为 `No`，这里不是 `number` |
+| `inv_ids` | 套包商品过滤 | 同一商品选择器 | `id` | `name` / `goods_sale_name` | A；页面会话依赖；多选格式未闭环 |
+| `skuId` | 需要物料/SKU 精确值的查询 | 同一商品列表行 | `skuId` | 商品名，可同时展示 `number` | A；页面会话依赖；不要用商品 `id` 代替 |
 | `brandId` | 通用商品/销售/库存查询 | `GET` 或 `POST /basedata/assist/brand` | `data.items[].id` | `name` | A |
 | `assistId`、`catId` | 老商品分类/库存分类控件 | `/basedata/assist`，按页面使用 `action=list`、`kzlist` 或 `alllist` | `data.items[].id` | `name` | A |
-| `categoryIds`、`category_ids`、`kzCategoryIds` | 新分类级联控件 | `GET /basedata/Category/tree` | 所选叶节点 `id` | `name` | A |
+| `kzCategoryIds` | 销售明细“快准类别”新级联控件 | `GET /basedata/Category/tree` | 多个叶节点 `id`，`JSON.stringify` 为数组字符串 | `name` | A；空值 `[]` |
+| `cateoryTreeValue` | 销售明细“三方类别”老树 | `POST /basedata/assist?action=list&typeNumber=trade&isDelete=2` | 单个节点 `id`，普通字符串 | `name` | A；空值发送空字符串 |
+| `categoryTreeAllValue` | 销售明细历史“快准类别”老树；当前隐藏 | `POST /basedata/assist?action=kzlist&typeNumber=trade&isDelete=2` | 单个节点 `id`，普通字符串 | `name` | A；正常请求为空；筛选隐藏 |
+| `categoryIds`、`category_ids` | 微仓新分类级联控件 | `GET /basedata/Category/tree` | 所选叶节点 `id` | `name` | B；多选最终线格式未闭环，筛选隐藏 |
 | `cateCodes`、`cate_codes` | 微仓品类品牌控件 | `POST /moveMall/moveSto/getCategoryWithBrand` | `data.category[].code` | `name` | A |
 | `brandIds`、`brand_id` | 微仓品类品牌控件 | 同上 | `data.category[].brands[].code` | `name` | A；这里是品牌 `code`，不是通用品牌 `id` |
 | `transTypeId` | 其它入/出库单查询 | `POST /scm/invOi/queryTransType`，`type=in` 或 `out` | `data.items[].id` | `name` | A |
 | `apply_sid`、`deliver_sid` | 商品调拨单管理 | `POST /basedata/Assist/userList` | 顶层数组 `[].sid` | `name` | A |
 | `activity_id` | 销售单/E 站订单活动条件 | `POST /Provider/index/saas/inner/activity/list` | `data.data[].id` | `name` | A |
 | `customType`、`merchant_code` | 大客户分类 | `POST /scm/invCu/getCarType` | `data[].id` | `name` | A |
-| `compressIds` | 微仓按车型推荐 | `POST /sale/Offer/getCarDataByStep` 逐级加载 | 解码后节点 `id`；最终多选叶节点 ID | `name` | B；原始 `data` 为 `kziv` |
+| `compressIds` | 微仓按车型推荐 | `POST /sale/Offer/getCarDataByStep` 逐级加载 | 解码后节点 `id`；最终多选叶节点 ID | `name` | B；页面会话依赖 |
 
 ## 客户与供应商
 
@@ -55,7 +59,7 @@
 GET /basedata/contact/getHomePageContact
 ```
 
-响应外层为 `success/status/redirect/msg/data`。`data` 下分三组：
+成功条件为 `success === true && status === "success"`；失败时读取 `msg` 并 fail closed。响应外层为 `success/status/redirect/msg/data`。`data` 下分三组：
 
 | 路径 | 用途 | 已确认公共字段 |
 |---|---|---|
@@ -83,7 +87,7 @@ GET /basedata/contact?action=list&skey=&isDelete=2&_search=false&nd=<timestamp>&
 | E 站简化客户 | `simple=1` |
 | 已绑定微仓客户 | `simple=1&is_move_shop=1` |
 
-响应分页容器为 `data.page/records/total/rows[]`；行公共字段仍是 `id/number/name`。
+成功条件为 `success === true && status === "success"`；失败时读取 `msg` 并 fail closed。响应分页容器为 `data.page/records/total/rows[]`；行公共字段仍是 `id/number/name`。
 
 部分新微仓页面使用专用分页组件：
 
@@ -94,7 +98,7 @@ Content-Type: application/x-www-form-urlencoded
 keyword=&page=1&rows=20
 ```
 
-组件读取 `data.contacts[]` 和 `data.total`；候选行使用 `id`、`number`、`name`。当前账号的专用列表可能为空，因此字段类型以组件契约为准。
+成功条件为 `success === true && status === "success"`；失败时读取 `msg` 并 fail closed。组件读取 `data.contacts[]` 和 `data.total`；候选行使用 `id`、`number`、`name`。当前账号的专用列表可能为空，因此字段类型以组件契约为准。
 
 ### `accountNo` 的两个不同含义
 
@@ -111,9 +115,12 @@ keyword=&page=1&rows=20
 
 ```http
 POST /basedata/Stores/getStoreIdName
+Content-Type: application/x-www-form-urlencoded
+
+<empty body>
 ```
 
-响应为 `status/msg/data[]`，条目字段为 `id:string`、`name:string`、`isDefault`。销售单和出库单模板均把 `item.id` 绑定给 `storeId`。
+成功条件为 `status === 200`；响应为 `status:number`、`msg:string`、`data:array`，条目字段为 `id:string`、`name:string`、`isDefault`。销售单和出库单模板均把 `item.id` 绑定给 `storeId`。
 
 ### 员工
 
@@ -121,10 +128,14 @@ POST /basedata/Stores/getStoreIdName
 
 ```http
 POST /basedata/employee?action=list
+Content-Type: application/x-www-form-urlencoded
+
+<empty body>
+
 POST /basedata/employee/getEmployeeList
 ```
 
-前者返回 `data.items[]`，后者当前返回 `data[]`。公共字段包括 `id`、`empId`、`number`、`name`，它们不是可互换字段。
+前者是当前销售单/出库单页面的规范候选线路，成功条件为 `success === true && status === "success"`，返回 `data.items[]` 及 `data.page/records/total`。后者在其它页面返回 `data[]`，但本轮未重新确认它的 Content-Type/空 body；Agent 应使用前者。公共字段包括 `id`、`empId`、`number`、`name`，它们不是可互换字段。
 
 | 消费页面 | 参数 | 读取字段 |
 |---|---|---|
@@ -141,15 +152,16 @@ POST /basedata/employee/getEmployeeList
 GET /scm/invSa/SelectQueryAllUser?action=SelectQueryAllUser
 ```
 
-响应 `data.items[]` 使用 `userId:number` 和 `realName:string`，分别提交给 `userId` 和用于显示。
+成功条件为 `status === 200`；失败时读取 `msg` 并 fail closed。响应 `data.items[]` 使用 `userId:number` 和 `realName:string`，分别提交给 `userId` 和用于显示。
 
 出库操作用户：
 
 ```http
 POST /scm/InvSa/getUsers
+<empty body; no Content-Type header>
 ```
 
-响应 `data[]` 使用 `uid:string` 和 `userName:string`。出库单模板把同一个 `uid` 分别绑定给 `uid`、`checkId`、`cancel_uid`。
+成功条件为 `status === 200`；响应为 `status:number`、`msg:string`、`data:array`，`data[]` 使用 `uid:string` 和 `userName:string`。出库单模板把同一个 `uid` 分别绑定给 `uid`、`checkId`、`cancel_uid`。
 
 ## 仓库与微仓
 
@@ -161,7 +173,7 @@ POST /scm/InvSa/getUsers
 GET /basedata/invlocation?action=list&disable=&skey=&isDelete=2&move_type=&_search=false&nd=<timestamp>&rows=100&page=1&sidx=&sord=
 ```
 
-响应为 `data.rows[]`，已确认字段：
+成功条件为 `success === true && status === "success"`；失败时读取 `msg` 并 fail closed。可靠分页路径为 `data.page`（当前页）、`data.records`（总记录数）、`data.total`（总页数），列表为 `data.rows[]`；按 `page <= data.total` 继续，每页最多 200。已确认字段：
 
 | 字段 | 用途 |
 |---|---|
@@ -178,7 +190,7 @@ Content-Type: application/x-www-form-urlencoded
 isMoveShop=1&key=&page=1&rows=20
 ```
 
-`isMoveShop=1` 是铺货微仓，`0` 是普通微仓。响应容器为 `data.list[]/data.total/data.in_non_shop_white`。当前账号返回空列表，但页面组件已明确使用下列行字段：
+`isMoveShop=1` 是铺货微仓，`0` 是普通微仓。成功条件为 `success === true && status === "success"`；失败时读取 `msg` 并 fail closed。响应容器为 `data.list[]/data.total/data.in_non_shop_white`。当前账号返回空列表，但页面组件已明确使用下列行字段：
 
 | 字段 | 用途 |
 |---|---|
@@ -198,7 +210,7 @@ isMoveShop=1&key=&page=1&rows=20
 GET /basedata/assist/getAssistList
 ```
 
-当前响应 `data[]` 的条目均为 `typeNumber=PayMethod`。`wayId` 取 `id:number`，显示取 `name:string`。
+成功条件为 `success === true && status === "success"`；失败时读取 `msg` 并 fail closed。当前响应 `data[]` 的条目均为 `typeNumber=PayMethod`。`wayId` 取 `id:number`，显示取 `name:string`。
 
 ### 结算账户
 
@@ -207,7 +219,7 @@ GET /basedata/settAcct/getAccountList
 GET /basedata/settAcct?action=list
 ```
 
-`getAccountList` 按用途返回 `data.all[]` 和 `data.nopay[]`；`action=list` 返回 `data.items[]`。公共字段均包括 `id:number`、`number:string`、`name:string`。现金银行报表的 `accountNo` 明确取 `number`。
+`getAccountList` 的成功条件为 `success === true && status === "success"`，按用途返回 `data.all[]` 和 `data.nopay[]`；`action=list` 的成功条件为 `status === 200`，返回 `data.items[]` 和 `data.totalsize`。失败时均读取 `msg` 并 fail closed。公共字段均包括 `id:number`、`number:string`、`name:string`。现金银行报表的 `accountNo` 明确取 `number`。
 
 ## 商品、品牌与分类
 
@@ -220,6 +232,8 @@ GET /basedata/inventory?action=kzlist&skey=&mBrand=&cars=&models=&mYear=&displac
 ```
 
 页面入口通常为 `/settings/goods_batch_kz`。原始 HTTP 响应的 `data` 是以 `kziv` 开头的站点编码字符串；页面正式处理流程解码后的候选行至少包含：
+
+Agent 线路：页面会话依赖。解码所需的 `SYSTEM.k` 来自已加载快准页面会话，纯 HTTP Agent 不持有它。下面的字段映射只说明页面如何取值；在项目提供受控解码适配前，Agent 无法通过该候选接口自行取得 `goods/goodsNo/inv_ids/skuId`。
 
 | 字段 | 释义 |
 |---|---|
@@ -244,10 +258,12 @@ GET /basedata/inventory?action=kzlist&skey=&mBrand=&cars=&models=&mYear=&displac
 
 ```http
 POST /basedata/assist/brand
+<empty body; no Content-Type header>
+
 GET /basedata/assist/brand?isDelete=0&_search=false&nd=<timestamp>&rows=100&page=1&sidx=id&sord=desc
 ```
 
-两种调用都返回 `data.items[]`；通用 `brandId` 取 `id:number`，显示取 `name:string`。`code:string` 是独立业务编码，不应默认代替 `id`。
+两种调用的成功条件均为 `success === true && status === "success"`；失败时读取 `msg` 并 fail closed。两者都返回 `data.items[]`；通用 `brandId` 取 `id:number`，显示取 `name:string`。`code:string` 是独立业务编码，不应默认代替 `id`。
 
 ### 分类
 
@@ -257,28 +273,43 @@ GET /basedata/assist/brand?isDelete=0&_search=false&nd=<timestamp>&rows=100&page
 GET /basedata/Category/tree
 ```
 
-递归节点为 `data.tree[]`，包含 `id/code/name/child`。组件值配置为 `id`，多选后通常取每条路径的末级节点：
+成功条件为 `success === true && status === "success"`；失败时读取 `msg` 并 fail closed。递归节点为 `data.tree[]`，包含 `id/code/name/child`。当前销售明细页的组件配置为 `value=id`、`children=child`、`emitPath=false`、`multiple=true`：
 
-- `categoryIds/category_ids`：逗号分隔的叶节点 ID；
-- `kzCategoryIds`：页面导航选择的 ID 数组，主查询中序列化为 JSON 数组字符串。
+- `kzCategoryIds`：叶节点 ID 数组，经 `JSON.stringify` 后提交。例如 `['<id1>','<id2>']` 在线路上为 `%5B%22%3Cid1%3E%22%2C%22%3Cid2%3E%22%5D`；空数组为 `%5B%5D`。
+- 微仓页面的 `categoryIds/category_ids` 也读取叶节点 `id`，但本轮没有取得双选后的最终请求字节；在确认是逗号连接还是其它组件编码前，Agent 不得暴露这两个筛选。
 
 老分类组件使用：
 
 ```http
 POST /basedata/assist?action=list&typeNumber=trade&isDelete=2
+<empty body; no Content-Type header>
+
 POST /basedata/assist?action=kzlist&typeNumber=trade&isDelete=2
+<empty body; no Content-Type header>
+
 POST /basedata/assist?action=alllist&typeNumber=trade&isDelete=2
+<empty body; no Content-Type header>
 ```
 
-返回 `data.items[]`，`assistId/catId` 取 `id`，显示取 `name`；具体 `action` 以消费页面为准。
+这些 POST 是零字节 body。销售明细页已确认 `action=list` 和 `action=kzlist` 都不发送 `Content-Type`；2026-08-19 又从库存查询页的正常自动请求确认 `action=alllist` 也不发送该请求头。不得改成 `{}` 或空表单。
+
+三种 `action` 的成功条件均为 `status === 200`；失败时读取 `msg` 并 fail closed。返回 `data.items[]` 和 `data.totalsize`，`assistId/catId` 取 `id`，显示取 `name`。销售明细页的特殊映射为：
+
+| 参数 | `action` | 取值/线格式 | 当前 UI 状态 |
+|---|---|---|---|
+| `cateoryTreeValue` | `list` | 单个所选节点 `id`；空值发送 `cateoryTreeValue=` | 三方类别老树，可见 |
+| `categoryTreeAllValue` | `kzlist` | 单个所选节点 `id`；空值发送 `categoryTreeAllValue=` | 历史快准类别老树，隐藏 |
+
+其它库存/汇总旧页面只取得了两个参数均为空的请求，不能套用销售明细绑定。对应领域文档将这些分类筛选保持隐藏，直到分别取得非空请求。
 
 ### 微仓品类品牌
 
 ```http
 POST /moveMall/moveSto/getCategoryWithBrand
+<empty body; no Content-Type header>
 ```
 
-响应为 `data.category[]`，分类字段是 `code/name/brands`；`brands[]` 只有 `code/name`。页面提交：
+成功条件为 `success === true && status === "success"`；失败时读取 `msg` 并 fail closed。响应为 `data.category[]`，分类字段是 `code/name/brands`；`brands[]` 只有 `code/name`。页面提交：
 
 - `cateCodes/cate_codes`：所选分类 `code` 去重并以逗号连接；
 - `brandIds/brand_id`：所选 `brands[].code` 去重并以逗号连接。
@@ -291,18 +322,24 @@ POST /moveMall/moveSto/getCategoryWithBrand
 
 ```http
 POST /scm/invOi/queryTransType?action=queryTransType&type=in
+<empty body; no Content-Type header>
+
 POST /scm/invOi/queryTransType?action=queryTransType&type=out
+<empty body; no Content-Type header>
 ```
 
-响应 `data.items[]` 同时含 `id`、`typeId`、`acctId`、`name`。页面组合框配置明确为 `value: "id"`、`text: "name"`，所以 `transTypeId` 必须取 `id`。
+`type=in` 的正常页面请求已确认是零字节 body、无 `Content-Type`；`type=out` 的页面候选绑定已确认，并在本轮最小化同源复核中确认后端接受同样的零字节、无 `Content-Type` 形态。两者成功条件均为 `status === 200`，响应为 `data.items[]` 和 `data.totalsize`。条目同时含 `id`、`typeId`、`acctId`、`name`。页面组合框配置明确为 `value: "id"`、`text: "name"`，所以 `transTypeId` 必须取 `id`。
 
 ### 跨服务站调拨
 
 ```http
 POST /basedata/Assist/userList
+Content-Type: application/x-www-form-urlencoded
+
+<empty body>
 ```
 
-响应顶层直接是数组，条目为 `uid/sid/name`。`apply_sid` 和 `deliver_sid` 均取 `sid:string`；`uid` 不是这两个筛选参数的值。
+该接口没有业务状态字段。成功条件为 HTTP 状态 `200` 且响应顶层是数组；否则 fail closed。条目为 `uid:string`、`sid:string`、`name:string`。`apply_sid` 和 `deliver_sid` 均取 `sid`；`uid` 不是这两个筛选参数的值。当前候选量超过 3000 条且接口没有分页容器，Agent 只能按用户给出的名称做内存匹配并返回少量候选，不得把全集写入上下文或持久化。
 
 ### E 站活动
 
@@ -313,15 +350,16 @@ Content-Type: application/json
 {"limit":20,"page":1,"id":"","name":"","type":"","status":"","source_type":"","examine_status":"","is_seckill":""}
 ```
 
-候选列表在 `data.data[]`，`activity_id` 取 `id:number`，显示取 `name:string`。分页总数在 `data.records`。
+成功条件为 `code === 0`；失败时读取顶层 `message` 并 fail closed。候选列表在 `data.data[]`，`activity_id` 取 `id:number`，显示取 `name:string`。分页总数在 `data.records`。
 
 ### 大客户分类
 
 ```http
 POST /scm/invCu/getCarType
+<empty body; no Content-Type header>
 ```
 
-响应 `data[]` 为 `id:string/name:string`。单选 `customType` 取 `id`；平台订单的多选 `merchant_code` 将多个 `id` 以逗号连接。
+成功条件为 `success === true && status === "success"`。响应 `data[]` 为 `id:string/name:string`。单选 `customType` 取 `id`；平台订单的多选 `merchant_code` 将多个 `id` 以逗号连接。
 
 ### 车型级联
 
@@ -340,19 +378,19 @@ id=<parentId>
 - 第四级及以后无子节点的节点标记为叶节点；
 - 组件使用 `emitPath=false` 和 `multiple=true`，所以 `compressIds` 是所选叶节点 `id` 的集合，而不是完整路径。
 
-该接口已经实现页面工作流闭环，但原始 HTTP `data` 仍需使用站点现有解码流程，因此独立 Agent 工具在具备兼容解码前应保持 B 级。
+该接口已经实现页面工作流闭环，但原始 HTTP `data` 仍需页面会话中的站点解码流程，因此纯 HTTP Agent 在具备正式适配前属于“页面会话依赖”；证据等级与线路状态不要混为一谈。
 
 ## 不需要选项接口的参数
 
 不是所有带 `Id`、`No` 或编码含义的字段都应再寻找一个主数据接口：
 
 - `billNo`、`relationOrderNo`、`order_no`、`refund_no`、VIN、`skey`、`matchCon` 等是用户已知内容或自由检索词，直接输入，不做候选枚举。
-- `billStatus`、`saleType`、`payType`、`sourceType`、`type` 等页面内固定枚举，其值域已经写在各主查询参数表中，不需要远程选项接口。
+- `billStatus`、`saleType`、`payType`、`sourceType`、`type` 等页面内固定枚举不需要远程选项接口，但只有领域文档列出完整值域时才能向 Agent 暴露；缺值或冲突时固定使用已确认默认值。
 - `billId`、`invId`、`adjustId`、`saleOrId`、`source_shop_id` 等只出现在列表响应或详情跳转上下文中，应从前一个查询响应取得；它们不是独立筛选项。查询 Agent 也不能据此调用文档明确排除的编辑、审核或删除动作。
 - `parentId`、`categoryId`、`brandId`、`unitId` 等如果只是商品/分类响应的附加字段，由该行或树节点直接提供；只有当它们作为另一个查询的筛选参数时，才按本页对应业务场景查选项。
 
 ## 仍需保守处理的边界
 
 - `/Storage/getMoveStorage` 和 `/basedata/Contact/moveContact` 在当前账号下可能返回空列表；字段名与提交关系已确认，但实际类型/可空性仍待非空样本。
-- 商品和车型候选的原始 `data` 使用 `kziv`。文档记录页面正式处理后的字段契约，不把编码字符串冒充普通 JSON。
+- 商品和车型候选的原始 `data` 使用 `kziv`。文档记录页面正式处理后的字段契约，不把编码字符串冒充普通 JSON；在正式适配层完成前，它们不是纯 HTTP Agent 的可执行 lookup。
 - ID、编号和名称都属于租户数据。文档只记录字段契约，不记录任何真实选项值。

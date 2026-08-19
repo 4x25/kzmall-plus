@@ -4,6 +4,8 @@
 
 > 这里只记录由正常页面查询明确证明的契约；没有抓到业务请求时不猜后端路径或参数名，并明确标为 C 级。
 
+> 页面示例中的 `rows=3000` 是 jqGrid 近似全量配置，不是 Agent 默认值。财务查询必须遵守[全局查询预算](./README.md#agent-查询预算)：有可靠分页时单页不超过 200；无可靠分页时缩小日期/账户/往来单位条件，最多读取 2 MiB，并且不自动扩大范围。
+
 ## 利润表
 
 证据等级：A。页面入口、真实查询、9 行非空响应、嵌套业务数组和 jqGrid 渲染绑定均已确认。
@@ -26,7 +28,7 @@ GET /reports/ProfitReport/getProfitReport?startMonth=<YYYY-MM>&endMonth=<YYYY-MM
 | 结束月份 | `endMonth` | `YYYY-MM` | 当前月份 | 统计结束月份；页面限制跨度不超过一年 | 月份控件 + 查询代码 |
 | 门店 | `storeId` | string/number | 空 | 可由入口 URL 传入门店 ID；空表示当前权限范围 | 查询对象 + 抓包 |
 
-响应外层为字面量键 `200:boolean`、`status:number`、`redirect:null`、`msg:string`、`data:array`。主表直接使用 `data[]`；当前响应中的月度行和合计行字段类型一致。
+成功条件为 `status === 200`；失败时读取 `msg` 并 fail closed。响应外层为字面量键 `200:boolean`、`status:number`、`redirect:null`、`msg:string`、`data:array`。字面量键 `200` 不是成功判断的替代品。主表直接使用 `data[]`；当前响应中的月度行和合计行字段类型一致。
 
 | 响应字段/路径 | 类型/可空 | 表格列 | 格式/单位 | 释义 | 证据 |
 |---|---|---|---|---|---|
@@ -77,9 +79,11 @@ GET /report/bankBalance_detail?action=detail&beginDate=<YYYY-MM-DD>&endDate=<YYY
 | 日期 | `beginDate` / `endDate` | `YYYY-MM-DD` | 当月 1 日 / 当前日 | 流水日期范围，均为必填 | 日期控件 + 抓包 |
 | 结算账户 | `accountNo` | string | 空全部 | `/basedata/settAcct?action=list` 返回的账户编号 | 下拉绑定 + 抓包 |
 | 查询动作 | 第一个/第二个 `action` | string | `detail` / `cash_bank_journal_new` | 后端业务动作与页面报表动作 | 抓包 |
-| jqGrid 参数 | `_search`、`nd`、`rows`、`page`、`sidx`、`sord` | mixed | `false`、动态、`3000`、`1`、`date`、`desc` | 防缓存、分页和排序 | 抓包 + 网格配置 |
+| jqGrid 兼容参数 | `_search`、`nd`、`rows`、`page`、`sidx`、`sord` | mixed | `false`、动态、`3000`、`1`、`date`、`desc` | 页面网格参数；`rows/page` 不能视为可靠服务端分页 | 抓包 + 网格配置 + 最小重放 |
 
-响应外层为 `status:number`、`msg:string`、`data.list[]`、`data.total`、`data.params`。`data.total` 是页脚汇总，包含同名的 `income`、`expenditure`、`discount`、`balance` 数值以及 `cash`、`bank` 分项；`data.params` 回显报表查询条件。
+成功条件为 `status === 200`；失败时读取 `msg` 并 fail closed。响应外层为 `status:number`、`msg:string`、`data.list[]`、`data.total`、`data.params`。`data.total` 是页脚汇总，包含同名的 `income`、`expenditure`、`discount`、`balance` 数值以及 `cash`、`bank` 分项；`data.params` 回显报表查询条件。
+
+该响应没有记录数、总页数或当前页字段，且 2026-08-19 的单日只读最小重放在 `rows=1` 时仍返回多行，证明不能依赖 `rows/page` 自动翻页。Agent 最多查询连续 7 天，优先要求结算账户条件，只读取一次响应；超过 2 MiB 时停止并要求缩小范围，不得请求 `page=2`，结果元数据固定标记 `pagination_complete: false`。
 
 | 响应字段/路径 | 类型/可空 | 表格列 | 格式/单位 | 释义 | 证据 |
 |---|---|---|---|---|---|
@@ -117,9 +121,11 @@ GET /report/fundBalance_detailSupplier?action=detailSupplier&type=10&beginDate=<
 | 日期 | `beginDate` / `endDate` | `YYYY-MM-DD` | 当月 1 日 / 当前日 | 单据日期范围，均为必填 | 日期控件 + 抓包 |
 | 供应商 | `accountNo` | string/number | 空全部 | 供应商 `id`；这里不是供应商 `number`，也不是结算账户编号 | 控件绑定 + 抓包 + [来源映射](./lookups.md#accountno-的两个不同含义) |
 | 应付维度 | `type` | string | 固定 `10` | 供应商应付账款维度 | 抓包 |
-| jqGrid 参数 | `_search`、`nd`、`rows`、`page`、`sidx`、`sord` | mixed | `false`、动态、`3000`、`1`、`date`、`desc` | 防缓存、分页和排序 | 抓包 + 网格配置 |
+| jqGrid 兼容参数 | `_search`、`nd`、`rows`、`page`、`sidx`、`sord` | mixed | `false`、动态、`3000`、`1`、`date`、`desc` | 页面网格参数；`rows/page` 不能视为可靠服务端分页 | 抓包 + 网格配置 + 最小重放 |
 
-响应外层为 `success:boolean`、`status:string`、`redirect:null`、`msg:string`、`data.list[]` 和 `data.total`。金额在当前非空响应中为数值字符串；`data.total` 用同名字段提供页脚合计。
+成功条件为 `success === true && status === "success"`；失败时读取 `msg` 并 fail closed。响应外层为 `success:boolean`、`status:string`、`redirect:null`、`msg:string`、`data.list[]` 和 `data.total`。金额在当前非空响应中为数值字符串；`data.total` 用同名字段提供页脚合计。
+
+该响应没有记录数、总页数或当前页字段，且 2026-08-19 的单日只读最小重放在 `rows=1` 时仍返回多行，证明不能依赖 `rows/page` 自动翻页。Agent 最多查询连续 7 天，优先要求供应商条件，只读取一次响应；超过 2 MiB 时停止并要求缩小范围，不得请求 `page=2`，结果元数据固定标记 `pagination_complete: false`。
 
 | 响应字段/路径 | 类型/可空 | 表格列 | 格式/单位 | 释义 | 证据 |
 |---|---|---|---|---|---|
@@ -150,7 +156,7 @@ GET /scm/payment?action=list&matchCon=&beginDate=<YYYY-MM-DD>&endDate=<YYYY-MM-D
 | 日期 | `beginDate` / `endDate` | `YYYY-MM-DD` | 当月 1 日 / 当前日 | 付款单日期范围 | 日期控件 + 抓包 |
 | jqGrid 参数 | `_search`、`nd`、`rows`、`page`、`sidx`、`sord` | mixed | `false`、动态、`2000`、`1`、`number`、`desc` | 防缓存、分页和排序 | 抓包 + 网格配置 |
 
-响应为 `status:number`、`msg:string`、`data.page:number`、`data.records:string`、`data.total:number`、`data.rows[]`。
+成功条件为 `status === 200`；失败时读取 `msg` 并 fail closed。响应为 `status:number`、`msg:string`、`data.page:number`、`data.records:string`、`data.total:number`、`data.rows[]`。
 
 | 响应字段/路径 | 类型/可空 | 表格列 | 格式/单位 | 释义 | 证据 |
 |---|---|---|---|---|---|
@@ -182,17 +188,17 @@ GET /scm/invTf/paymentList?matchCon=&type=0&beginDate=<YYYY-MM-DD>&endDate=<YYYY
 | 日期 | `beginDate` / `endDate` | `YYYY-MM-DD` | 当月 1 日 / 当前日 | 单据日期范围 | 日期控件 + 抓包 |
 | jqGrid 参数 | `_search`、`nd`、`rows`、`page`、`sidx`、`sord` | mixed | `false`、动态、`2000`、`1`、`number`、`desc` | 防缓存、分页和排序 | 抓包 + 网格配置 |
 
-当前空响应为 `status:number`、`msg:string`、`data.page:number`、`data.records:number`、`data.total:number`、`data.rows:[]`。
+成功条件为 `status === 200`；失败时读取 `msg` 并 fail closed。当前空响应为 `status:number`、`msg:string`、`data.page:number`、`data.records:number`、`data.total:number`、`data.rows:[]`。
 
 | 响应字段 | 表格列 | 格式/单位 | 释义 | 证据 |
 |---|---|---|---|---|
-| `billDate` | 单据日期 | 日期 | 调拨收/付款单日期 | `colModel` |
-| `billNo` | 单据编号 | 单号 | 调拨收/付款单编号 | `colModel` |
-| `transTypeName` | 单据类型 | 文本 | 调拨收入/支出类型显示名 | `colModel` |
-| `totalAmount` | 收/付款金额 | 元 | 本单收款或付款金额 | `colModel` |
-| `totalDiffAmount` | 折让金额 | 元 | 调拨结算折让 | `colModel` |
-| `description` | 备注 | 文本 | 单据备注 | `colModel` |
-| `isDisable` | 隐藏“是否可编辑” | 枚举 | 页面权限标记，Agent 忽略 | `colModel` + formatter |
+| `data.rows[].billDate` | 单据日期 | 日期 | 调拨收/付款单日期 | `colModel` |
+| `data.rows[].billNo` | 单据编号 | 单号 | 调拨收/付款单编号 | `colModel` |
+| `data.rows[].transTypeName` | 单据类型 | 文本 | 调拨收入/支出类型显示名 | `colModel` |
+| `data.rows[].totalAmount` | 收/付款金额 | 元 | 本单收款或付款金额 | `colModel` |
+| `data.rows[].totalDiffAmount` | 折让金额 | 元 | 调拨结算折让 | `colModel` |
+| `data.rows[].description` | 备注 | 文本 | 单据备注 | `colModel` |
+| `data.rows[].isDisable` | 隐藏“是否可编辑” | 枚举 | 页面权限标记，Agent 忽略 | `colModel` + formatter |
 | 派生 `operating` | 操作 | HTML | 页面操作列，不是响应字段 | formatter |
 
 查看之外的修改、删除动作均不属于查询能力。
@@ -219,7 +225,7 @@ pay_type=1&pay_no=&beg_time=&end_time=&order_no=&contact_name=&page=1&limit=20&i
 | 全量导出标志 | `is_all` | number | 查询固定 `0` | `1` 仅用于导出，查询 Agent 不使用 | 查询对象 |
 | 页码/页大小 | `page` / `limit` | integer | `1` / `20`；页大小可选 20、50、100、500 | 分页 | 组件配置 + 抓包 |
 
-响应外层为 `success`、`status`、`redirect`、`page_count`、`msg`、`list[]`、`count`。
+成功条件为 `success === true && status === "success"`；失败时读取 `msg` 并 fail closed。响应外层为 `success`、`status`、`redirect`、`page_count`、`msg`、`list[]`、`count`。
 
 | 响应字段/路径 | 类型/可空 | 表格列 | 格式/单位 | 释义 | 证据 |
 |---|---|---|---|---|---|
@@ -234,7 +240,7 @@ pay_type=1&pay_no=&beg_time=&end_time=&order_no=&contact_name=&page=1&limit=20&i
 
 ## 三方成本调整单查询
 
-证据等级：A。默认当月为空；在只读扩大日期范围后取得 3 行非空响应，并确认全部筛选枚举、字段类型和列绑定。
+证据等级：A。Agent 线路：条件可执行；默认当月为空，在只读扩大日期范围后取得非空响应，并确认全部筛选枚举、字段类型和列绑定，但完整翻页终止条件尚未闭环。
 
 ```http
 GET /scm/Cost/CostList?matchCon=&beginDate=<YYYY-MM-DD>&endDate=<YYYY-MM-DD>&billStatus=2&_search=false&nd=<timestamp>&rows=100&page=1&sidx=number&sord=desc&searchType=0
@@ -250,7 +256,7 @@ GET /scm/Cost/CostList?matchCon=&beginDate=<YYYY-MM-DD>&endDate=<YYYY-MM-DD>&bil
 | 关键字 | `matchCon` | string | 空 | 按 `searchType` 搜索 | 查询对象 |
 | jqGrid 参数 | `_search`、`nd`、`rows`、`page`、`sidx`、`sord` | mixed | `false`、动态、`100`、`1`、`number`、`desc` | 防缓存、分页和排序 | 抓包 + 网格配置 |
 
-响应位于 `data.rows[]`；本次非空样本只返回该容器，没有通用 `status/msg` 外层。
+该线路没有业务 `status/msg` 字段。成功条件为 HTTP 状态 `200`、顶层 `data` 为对象且 `data.rows` 为数组；任一结构不符即 fail closed。响应位于 `data.rows[]`，但没有 `page/records/total` 或其它可靠分页元数据，尚未证明“短页/空页”可以作为终止条件。Agent 只允许请求 `page=1`、`rows<=200`，最多连续 7 天，并固定返回 `pagination_complete: false`；不得自动请求后续页。
 
 | 响应字段/路径 | 类型/可空 | 表格列 | 格式/单位 | 释义 | 证据 |
 |---|---|---|---|---|---|
@@ -280,7 +286,7 @@ GET /scm/ori/listInc?action=listInc&matchCon=&beginDate=<YYYY-MM-DD>&endDate=<YY
 | 日期 | `beginDate` / `endDate` | `YYYY-MM-DD` | 当月 1 日 / 当前日 | 收入单日期范围 | 日期控件 + 抓包 |
 | jqGrid 参数 | `_search`、`nd`、`rows`、`page`、`sidx`、`sord` | mixed | `false`、动态、`100`、`1`、`number`、`desc` | 防缓存、分页和排序 | 抓包 + 网格配置 |
 
-响应为 `status:number`、`msg:string`、`data.page:number`、`data.records:string`、`data.total:number`、`data.rows[]`。
+成功条件为 `status === 200`；失败时读取 `msg` 并 fail closed。响应为 `status:number`、`msg:string`、`data.page:number`、`data.records:string`、`data.total:number`、`data.rows[]`。
 
 | 响应字段/路径 | 类型/可空 | 表格列 | 释义 | 证据 |
 |---|---|---|---|---|
@@ -313,7 +319,7 @@ GET /scm/ori/listExp?action=listExp&matchCon=&beginDate=<YYYY-MM-DD>&endDate=<YY
 | 日期 | `beginDate` / `endDate` | `YYYY-MM-DD` | 当月 1 日 / 当前日 | 支出单日期范围 | 日期控件 + 抓包 |
 | jqGrid 参数 | `_search`、`nd`、`rows`、`page`、`sidx`、`sord` | mixed | `false`、动态、`100`、`1`、`number`、`desc` | 防缓存、分页和排序 | 抓包 + 网格配置 |
 
-响应外层和字段类型与“其它收入单查询”相同，列表位于 `data.rows[]`。
+成功条件同样为 `status === 200`；失败时读取 `msg` 并 fail closed。响应外层和字段类型与“其它收入单查询”相同，列表位于 `data.rows[]`。
 
 | 响应字段/路径 | 类型/可空 | 表格列 | 释义 | 证据 |
 |---|---|---|---|---|
@@ -334,19 +340,23 @@ GET /scm/ori/listExp?action=listExp&matchCon=&beginDate=<YYYY-MM-DD>&endDate=<YY
 
 ```http
 POST /scm/receipt/get_account_list_new
+Content-Type: application/x-www-form-urlencoded
+
+buId=&page=1&rows=50&sortWay=&
+
 POST /scm/receipt/get_account_statistics
-```
+Content-Type: application/x-www-form-urlencoded
 
-列表请求体：
-
-```text
-buId=&page=1&rows=50&sortWay=
+<empty body>
 ```
 
 页面还会读取微仓权限：
 
 ```http
 POST /moveMall/MoveSto/checkMoveRight
+Content-Type: application/x-www-form-urlencoded
+
+<empty body>
 ```
 
 | UI 筛选项 | 请求参数 | 类型 | 默认值/枚举 | 释义 | 证据 |
@@ -355,7 +365,7 @@ POST /moveMall/MoveSto/checkMoveRight
 | 页码/页大小 | `page` / `rows` | integer | `1` / `50`；页大小可选 50、100、200/300 | 分页 | 查询对象 + 抓包 |
 | 列排序 | `sortWay` | string | 空；如 `ARREARS_DESC`、`BALANCE_ASC` | 由可排序列名和升降序拼接后转大写 | 组件排序逻辑 |
 
-列表响应外层为 `success`、`status`、`redirect`、`msg`、`data`；分页数据位于 `data.list[]`，同时返回 `data.page`、`data.rows`、`data.records`、`data.total`、`data.limit`。
+列表成功条件为 `success === true && status === "success"`；否则读取 `msg` 并 fail closed。响应外层为 `success`、`status`、`redirect`、`msg`、`data`；分页数据位于 `data.list[]`，同时返回 `data.page`、`data.rows`、`data.records`、`data.total`、`data.limit`。
 
 | 响应字段/路径 | 类型/可空 | 表格列 | 格式/单位 | 释义 | 证据 |
 |---|---|---|---|---|---|
@@ -376,6 +386,23 @@ POST /moveMall/MoveSto/checkMoveRight
 
 联系人和电话属于个人信息：Agent 仅在用户明确需要时返回最少字段，不得持久化实际值。授信设置、期初欠款导入、导出及行内启停均为写/高风险动作，不属于查询接口。
 
+`get_account_statistics` 是页面汇总卡片的只读辅助查询，成功条件同样为 `success === true && status === "success"`。它不接受筛选 body，不能用来代替主列表或推导当前筛选后的统计：
+
+| 响应路径 | 类型 | 页面指标/释义 |
+|---|---|---|
+| `data.account.totalArrears` | string | 欠款总额 |
+| `data.account.ArrearsQty` | number | 欠款客户数 |
+| `data.account.averageArrears` | number | 平均欠款 |
+| `data.account.start_balance` | number | 期初余额汇总 |
+| `data.balance.stat_balance` | string | 账户余额汇总 |
+| `data.balance.avg_balance` | number | 平均账户余额 |
+| `data.balance.num_cont_balance` | number | 有账户余额的客户数 |
+| `data.credit.stat_credit` | number | 授信汇总 |
+| `data.credit.credit_vacancy` | number | 剩余授信汇总 |
+| `data.credit.num_cont_credit` | number | 有授信的客户数 |
+
+`checkMoveRight` 只返回 `moveRight:boolean`，用于页面决定是否展示微仓列，不是业务数据列表，也不注册为独立 Agent 工具。
+
 ## 服务站账户汇总
 
 证据等级：A。两个自动加载的 POST、空 JSON 请求体、非空响应、页面组件字段绑定和待办汇总算法均已确认。页面没有查询表单，进入页面即读取当前服务站账户。
@@ -392,7 +419,7 @@ Content-Type: application/json;charset=UTF-8
 {}
 ```
 
-两个接口的通用响应外层为 `success:boolean`、`status:string`、`redirect:null`、`msg:string`。账户汇总位于 `data` 对象；金额的 `*Yuan` 字段是元单位数值字符串，页面会补千分位但不会改变原始接口值。
+两个接口的成功条件均为 `success === true && status === "success"`；失败时读取 `msg` 并 fail closed。通用响应外层为 `success:boolean`、`status:string`、`redirect:null`、`msg:string`。账户汇总位于 `data` 对象；金额的 `*Yuan` 字段是元单位数值字符串，页面会补千分位但不会改变原始接口值。
 
 `accountBalanceSummary` 的页面展示字段：
 
@@ -489,13 +516,14 @@ Content-Type: application/json;charset=UTF-8
 
 ```http
 POST /scm/receipt/get_receipt_list_new
+Content-Type: application/x-www-form-urlencoded
+
+buId=&endDate=<YYYY-MM-DD>&beginDate=<YYYY-MM-DD>&wayId=&transType=&billStatus=SUBMIT&matchCon=&page=1&rows=50&checkTimeBegin=&checkTimeEnd=&
+
 POST /scm/receipt/receipt_home_page
-```
+Content-Type: application/x-www-form-urlencoded
 
-主列表请求体：
-
-```text
-buId=&endDate=<YYYY-MM-DD>&beginDate=<YYYY-MM-DD>&wayId=&transType=&billStatus=SUBMIT&matchCon=&page=1&rows=50&checkTimeBegin=&checkTimeEnd=
+<empty body>
 ```
 
 | UI 筛选项 | 请求参数 | 类型 | 默认值/枚举 | 释义 | 证据 |
@@ -509,7 +537,7 @@ buId=&endDate=<YYYY-MM-DD>&beginDate=<YYYY-MM-DD>&wayId=&transType=&billStatus=S
 | 确认时间 | `checkTimeBegin` / `checkTimeEnd` | `YYYY-MM-DD` | 空 | 财务确认时间范围 | 查询对象 |
 | 页码/页大小 | `page` / `rows` | integer | `1` / `50`；页大小可选 50、100、200/300 | 分页 | 查询对象 + 抓包 |
 
-响应外层为 `success`、`status`、`redirect`、`msg`、`data`；列表位于 `data.list[]`，并返回分页字段。
+主列表成功条件为 `success === true && status === "success"`；否则读取 `msg` 并 fail closed。响应外层为 `success`、`status`、`redirect`、`msg`、`data`；列表位于 `data.list[]`，分页字段为 `data.page/rows/records/total/limit`。
 
 | 响应字段/路径 | 类型/可空 | 表格列 | 格式/单位 | 释义 | 证据 |
 |---|---|---|---|---|---|
@@ -530,6 +558,22 @@ buId=&endDate=<YYYY-MM-DD>&beginDate=<YYYY-MM-DD>&wayId=&transType=&billStatus=S
 | `data.list[].description` | string/可空 | 备注 | 文本 | 收款单备注 | 非空响应 + 表格 `prop` |
 
 页面的“收款”“批量确认”“财务确认”“撤销”等按钮均会改变业务或资金状态，禁止调用。
+
+`receipt_home_page` 是无筛选 body 的页面首页汇总，不影响主列表解析。成功条件同样为 `success === true && status === "success"`；数据位于顶层 `accountData`，不是 `data`：
+
+| 响应路径 | 类型 | 释义 |
+|---|---|---|
+| `accountData.account.totalArrears` | string | 当前欠款总额 |
+| `accountData.account.ArrearsQty` | number | 欠款客户数 |
+| `accountData.account.averageArrears` | number | 平均欠款 |
+| `accountData.account.start_balance` | number | 期初余额汇总 |
+| `accountData.today.TodayPayment` | string | 今日收款合计 |
+| `accountData.today.TodayPaymentInfo` | array | 今日收款分类明细 |
+| `accountData.month.MonthPayment` | string | 本月收款合计 |
+| `accountData.month.monthPaymentInfo` | array | 本月收款分类明细 |
+| `accountData.transType[]` | array | 收款类型候选；条目为 `transType:number`、`transTypeName:string` |
+
+该汇总不随主列表 `buId/date/status` 筛选变化，不能把它当成当前列表的筛选后合计。若 Agent 只实现收款明细查询，可以不调用此辅助接口。
 
 ## 经营报表（日/月经营数据）
 
@@ -557,7 +601,7 @@ GET /report/getMonthReport?action=getMonthReport&beginDate=<YYYY-MM-01>&endDate=
 | 页码/页大小 | `page` / `rows` | integer | `1` / `3000` | 一次最多 3000 行 | jqGrid 配置 + 抓包 |
 | 排序 | `sidx` / `sord` | string | `date` / `desc` | 后端排序字段和方向 | 抓包 |
 
-响应外层为 `status:number`、`msg:string`、`data.rows[]` 和 `data.userdata`。`rows[]` 是分日/分月行；`userdata` 是 jqGrid 页脚汇总对象，键名与可汇总列相同。当前非空样本中金额和数量均为 number，`kzProfitRate`、`profit_rate` 为百分比字符串，`remark` 为 nullable string。
+两个页签的成功外层不同：日报以 `status === 200` 为成功；月报以 `success === true && status === "success"` 为成功。失败时均读取 `msg` 并 fail closed，不能共用一个谓词。两者的列表均位于 `data.rows[]`，`data.userdata` 是 jqGrid 页脚汇总对象，键名与可汇总列相同。当前非空样本中金额和数量均为 number，`kzProfitRate`、`profit_rate` 为百分比字符串，`remark` 为 nullable string。
 
 | 表格列 | 日报响应字段 | 月报响应字段 | 类型/格式 | 释义 |
 |---|---|---|---|---|
@@ -691,7 +735,7 @@ GET /Report/getCustomerBalance?action=detail&type=0&payStatus=-1&buId=-1&beginDa
 | 收款拆分类型 | `type` | integer-like string | `0` 支付方式、`1` 账户 | 动态金额列按支付方式或账户拆分 | 下拉枚举 + 抓包 |
 | 收款状态 | `payStatus` | integer-like string | `-1` 全部、`1` 全部收款、`2` 欠款 | 客户应收结清状态 | 下拉枚举 + 抓包 |
 
-响应外层为 `status:number`、`msg:string`、`data:object`。`data.rows[]` 是非空列表，`data.colIndex[]` 给出动态金额字段名，`data.colNames[]` 给出对应中文列名，`data.total` 给出同口径合计。
+成功条件为 `status === 200`；失败时读取 `msg` 并 fail closed。响应外层为 `status:number`、`msg:string`、`data:object`。`data.rows[]` 是非空列表，`data.colIndex[]` 给出动态金额字段名，`data.colNames[]` 给出对应中文列名，`data.total` 给出同口径合计。
 
 | 响应字段/路径 | 类型/可空 | 表格列 | 格式/单位 | 释义 | 证据 |
 |---|---|---|---|---|---|

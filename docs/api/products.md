@@ -4,7 +4,7 @@
 
 ## 快准商品列表
 
-证据等级：A。正常页面加载/查询请求、查询对象、jqGrid 列配置、站点正式解码调用以及解码后的非空响应字段类型均已确认。只提取了字段名和类型，没有保存商品行值。
+证据等级：A。Agent 线路：页面会话依赖。正常页面加载/查询请求、查询对象、jqGrid 列配置、站点正式解码调用以及解码后的非空响应字段类型均已确认。只提取了字段名和类型，没有保存商品行值。
 
 页面入口：
 
@@ -36,6 +36,8 @@ GET /basedata/inventory?action=kzlist&isDelete=2&query=true&isDelete=0&_search=f
 | jqGrid 查询/防缓存 | `_search` / `nd` | boolean-like / integer-like | `false` / `<timestamp>` | 非业务条件 | 抓包 |
 
 线上传输外层是 `success:boolean`、`status:string`、`redirect:null`、`msg:string`、`data:string`。页面已加载的正式处理函数确认：当 `data` 以 `kziv` 开头时，页面拆出 16 字节 IV，使用当前会话内的 `SYSTEM.k` 调用 `aesDecrypt`，再以 `JSON.parse` 写回 `data`。文档不记录密钥或任何解码后的行值。逻辑解码后 `data` 为对象，包含 `page:number`、`records:number`、`total:number`、`rows:array`。
+
+纯 HTTP Agent 只能收到编码字符串，并不拥有快准页面会话中的 `SYSTEM.k`。因此本节的逻辑 schema 用于解释页面字段，不表示 Agent 能直接解析；在项目提供受控的正式解码适配前，不得把该端点加入普通 HTTP 工具。
 
 | 响应字段/路径 | 类型/可空 | 表格列 | 格式/单位 | 释义 | 证据 |
 |---|---|---|---|---|---|
@@ -77,7 +79,7 @@ GET /basedata/inventory?action=kzlist&isDelete=2&query=true&isDelete=0&_search=f
 
 ## 三方商品列表
 
-证据等级：A。正常页面请求、查询绑定、站点正式解码以及解码后的非空响应字段类型均已确认。
+证据等级：A。Agent 线路：页面会话依赖。正常页面请求、查询绑定、站点正式解码以及解码后的非空响应字段类型均已确认。
 
 ```http
 GET /basedata/inventory?action=list&isDelete=2&isDelete=0&_search=false&nd=<timestamp>&rows=50&page=1&sidx=number&sord=asc
@@ -94,6 +96,8 @@ GET /basedata/inventory?action=list&isDelete=2&isDelete=0&_search=false&nd=<time
 | jqGrid 查询/防缓存 | `_search` / `nd` | boolean-like / integer-like | `false` / `<timestamp>` | 非业务条件 | 抓包 |
 
 传输层同样先返回编码 `data:string`，再由当前会话的正式 `processData` 解码。逻辑结构为 `data.page:number`、`data.records:number`、`data.total:number`、`data.rows:array`。
+
+与快准商品列表相同，逻辑字段可读不等于纯 HTTP 线路可读。没有受控解码适配时，Agent 必须 fail closed。
 
 | 响应字段/路径 | 类型/可空 | 表格列 | 格式/单位 | 释义 | 证据 |
 |---|---|---|---|---|---|
@@ -124,7 +128,7 @@ GET /basedata/inventory?action=list&isDelete=2&isDelete=0&_search=false&nd=<time
 
 ## 套包分页列表
 
-证据等级：A。页面正常打开/查询产生的 POST、20 行非空响应、页面查询对象与全部可见列绑定均已确认。
+证据等级：A。Agent 线路：条件可执行。页面正常打开/查询产生的 POST、20 行非空响应、页面查询对象与全部可见列绑定均已确认。
 
 ```http
 POST /storage/getPackageList
@@ -135,11 +139,13 @@ page=1&rows=20&inv_ids=
 
 | UI 筛选项 | 请求参数 | 类型 | 默认值/形态 | 释义 | 证据 |
 |---|---|---|---|---|---|
-| 商品 | `inv_ids` | string | 空表示全部；选择器返回的商品 ID 集合 | 限定套包商品；页面从商品选择器的 `data('ids')` 取值 | UI + 查询组件 + 抓包 |
+| 商品 | `inv_ids` | string | 空值固定发送 `inv_ids=`；多选线格式尚未取得非空样本 | 限定套包商品；页面从商品选择器的 `data('ids')` 取值 | UI + 查询组件 + 空值抓包 |
 | 页码 | `page` | integer | `1` | 从 1 开始的页码；点击“查询”时重置为 1 | 查询组件 + 抓包 |
 | 每页行数 | `rows` | integer | `20` | 分页大小 | 查询组件 + 抓包 |
 
-响应外层：`success:boolean`、`status:string`、`redirect`、`msg:string`、`data`。分页容器为 `data.page:number`、`data.records:number`、`data.total:number`、`data.rows:array`。
+成功条件为 `success === true && status === "success"`；失败时读取 `msg` 并 fail closed。响应外层：`success:boolean`、`status:string`、`redirect`、`msg:string`、`data`。分页容器为 `data.page:number`、`data.records:number`、`data.total:number`、`data.rows:array`。
+
+商品候选本身还受 `kziv` 页面会话依赖影响。Agent 可以执行不带商品条件的分页列表；在多选序列化和候选解码适配完成前，不得暴露 `inv_ids` 筛选。
 
 | 响应字段/路径 | 类型/可空 | 表格列 | 格式/单位 | 释义 | 证据 |
 |---|---|---|---|---|---|
@@ -172,7 +178,7 @@ Content-Type: application/json
 | 页码 | `page` | integer | `1` | 从 1 开始的页码 | 抓包 + 组件查询对象 |
 | 每页行数 | `rows` | integer | `20`；UI 可选 `20/50/100` | 分页大小 | 抓包 + 分页组件 |
 
-响应外层：`success:boolean`、`status:string`、`redirect`、`msg:string`、`data.total:number`、`data.list:array`。
+成功条件为 `success === true && status === "success"`；失败时读取 `msg` 并 fail closed。响应外层：`success:boolean`、`status:string`、`redirect`、`msg:string`、`data.total:number`、`data.list:array`。
 
 | 响应字段/路径 | 类型/可空 | 表格列 | 格式/单位 | 释义 | 证据 |
 |---|---|---|---|---|---|

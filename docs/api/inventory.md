@@ -4,28 +4,36 @@
 
 ## 库存余额
 
-证据等级：A。
+证据等级：A。Agent 线路：条件可执行；不带商品筛选可直接查询，商品候选仍受 `kziv` 页面会话依赖；旧分类和货位筛选在来源/非空线格式分别闭环前保持隐藏。
 
 ```http
 GET /report/invBalance?action=detail&goods=&goodsNo=&storage=&storageNo=&catId=&catName=&brandId=&area=false&zero=false&negative=false&carModel=false&area_name=
 ```
+
+仓库早期脱敏的正常 UI 请求还确认了成本版端点；该次查询主动开启了零库存和车型显示，因此其中的 `zero=true`、`carModel=true` 是样本筛选值，不是页面默认值：
+
+```http
+GET /report/invBalance_cost?action=detail&goods=&goodsNo=&storage=&storageNo=&catId=&catName=&brandId=&area=false&zero=true&negative=false&carModel=true&area_name=
+```
+
+本轮未重新勾选“显示成本毛利”，所以 `_cost` 路径及其成本字段保留为历史非空响应证据，普通端点和当前默认值则以本轮抓包为准。
 
 | UI 筛选项 | 请求参数 | 类型 | 默认值/枚举 | 释义 | 证据 |
 |---|---|---|---|---|---|
 | 固定查询动作 | `action` | string | `detail` | 库存余额明细查询 | 抓包 |
 | 商品 | `goods` / `goodsNo` | string | 空 | 商品选择器分别提交商品 `id` 与 `number`；显示名不进入这两个字段 | UI + 抓包 + [来源映射](./lookups.md#商品选择器) |
 | 仓库 | `storage` / `storageNo` | string | 空 | 仓库选择器分别提交 `id` 与 `locationNo` | UI + 抓包 + [来源映射](./lookups.md#普通仓库) |
-| 商品类别 | `catId` / `catName` | string/number + string | 空 | 类别 ID 与显示名 | UI + 抓包 |
+| 商品类别 | `catId` / `catName` | string/number + string | 空；本页候选 `action` 与双字段非空线格式未闭环，Agent 暂不暴露 | 类别 ID 与显示名必须来自同一节点 | UI + 空值抓包 |
 | 品牌 | `brandId` | string/number | 空 | 品牌 ID | UI + 抓包 |
 | 显示货位 | `area` | boolean-like string | `false` | 是否展开货位维度 | UI + 抓包 |
 | 显示零库存 | `zero` | boolean-like string | `false` | 是否保留零库存商品；旧笔记中的 `true` 是特定查询值 | UI + 抓包 |
 | 显示负库存 | `negative` | boolean-like string | `false` | 是否保留负库存商品 | UI + 抓包 |
 | 显示车型 | `carModel` | boolean-like string | `false` | 是否展示适用车型 | UI + 抓包 |
-| 货位 | `area_name` | string | 空；多个值逗号分隔 | 指定货位过滤 | UI + 抓包 |
+| 货位 | `area_name` | string | 空；候选来源和非空提交样本未闭环，Agent 暂不暴露 | 指定货位过滤；不得自行拼接货位显示名 | UI + 空值抓包 |
 
-页面另有“显示成本毛利”复选框。勾选后可能切换到成本版接口/追加成本字段；本轮为避免暴露经营敏感值未勾选。现有早期笔记已确认成本版行字段可包含 `cost_1`、`allcost_1`、`cost_2`、`allcost_2`、`cost_3`、`allcost_3`。
+页面另有“显示成本毛利”复选框。本轮为避免暴露经营敏感值未勾选；历史脱敏响应已确认成本版行字段可包含 `cost_1`、`allcost_1`、`cost_2`、`allcost_2`、`cost_3`、`allcost_3`。
 
-响应外层：`status`、`msg`、`data`；`data` 常见 `total`、`page`、`records`、`rows`。
+成功条件为 `status === 200`；失败时读取 `msg` 并 fail closed。响应外层：`status`、`msg`、`data`；`data` 常见 `total`、`page`、`records`、`rows`。
 
 | 响应字段/路径 | 类型/可空 | 表格列 | 格式/单位 | 释义 | 证据 |
 |---|---|---|---|---|---|
@@ -37,6 +45,7 @@ GET /report/invBalance?action=detail&goods=&goodsNo=&storage=&storageNo=&catId=&
 | `data.rows[].spec` | string/可空 | 规格型号 | 文本 | 商品规格 | 非空响应 + jqGrid 列配置 |
 | `data.rows[].unit` | string/可空 | 单位 | 文本 | 基本计量单位 | 非空响应 + jqGrid 列配置 |
 | `data.rows[].packSpec` | string/可空 | 包装规格 | 文本 | 包装换算说明 | 非空响应 + jqGrid 列配置 |
+| `data.rows[].minNum` | string/可空 | 未显示 | 数量文本 | 历史响应中的最小包装/订货数量上下文；正式后端释义待确认 | 历史脱敏响应 |
 | `data.rows[].brandName` | string/可空 | 品牌 | 文本 | 品牌名称 | 非空响应 + jqGrid 列配置 |
 | `data.rows[].categoryName` | string/可空 | 商品类别 | 文本 | 分类名称 | 非空响应 + jqGrid 列配置 |
 | `data.rows[].carModel` | string/可空 | 适用车型 | 文本 | 适配车型 | 非空响应 + jqGrid 列配置 |
@@ -52,6 +61,8 @@ GET /report/invBalance?action=detail&goods=&goodsNo=&storage=&storageNo=&catId=&
 | `data.rows[].qty_3` | number/string | 三方仓库存 | 件/基本单位 | 三方仓数量 | 非空响应 + 分组列配置 |
 | `data.rows[].cost_3` | number/string/可空 | 三方仓单位成本 | 元/单位 | 成本版可见 | 早期脱敏响应 + 分组列配置 |
 | `data.rows[].allcost_3` | number/string/可空 | 三方仓库存成本 | 元 | 三方仓成本合计 | 早期脱敏响应 + 分组列配置 |
+
+早期字段清单还曾单独列出 `key`，但同一份非空 JSON 样本和本轮响应/列配置均未出现该键，因此不把它列入可用响应契约。
 
 ## 货位调整记录
 
@@ -71,7 +82,7 @@ GET /basedata/area/changeShow?action=changeShow&matchCon=&beginDate=<YYYY-MM-DD>
 | 分页 | `rows` / `page` | integer | `100` / `1` | 每页条数和页码 | jqGrid 配置 + 抓包 |
 | 排序 | `sidx` / `sord` | string | `number` / `desc` | 按单据编号倒序 | jqGrid 配置 + 抓包 |
 
-响应外层为 `status:number`、`msg:string`、`data:object`，列表行为 `data.rows[]`。
+成功条件为 `status === 200`；失败时读取 `msg` 并 fail closed。响应外层为 `status:number`、`msg:string`、`data:object`；可靠分页路径为 `data.page:number`、`data.records:number`、`data.total:number`，列表行为 `data.rows[]`。`data.total` 是总页数，按 `page <= data.total` 继续，每页最多 200。
 
 | 响应字段/路径 | 类型/可空 | 表格列 | 格式/单位 | 释义 | 证据 |
 |---|---|---|---|---|---|
@@ -119,9 +130,9 @@ GET /scm/invTf?action=list&matchCon=&outLocationId=-1&inLocationId=-1&billStatus
 GET /scm/invTf?action=tfListNum&<同一组业务过滤条件>
 ```
 
-已观察返回字段 `wait_out`、`out`。列表行字段因默认查询为空，不能从本轮响应可靠推断。
+该计数接口同样没有业务状态字段；成功条件为 HTTP 状态 `200`，响应恰含数值字段 `wait_out`、`out`，否则 fail closed。它只用于页签角标，不影响主列表解析，也可不注册为独立 Agent 工具。列表行字段因默认查询为空，不能从本轮响应可靠推断。
 
-列表响应外层包含 `status`、`msg` 和 jqGrid `data` 容器；当前 `data.rows` 为空。下面的字段名和列语义来自 `transfersList.js`，类型与可空性待非空响应确认：
+当前线路没有业务 `status/msg` 字段。成功条件为 HTTP 状态 `200`、顶层 `data` 为对象且 `data.rows` 为数组；任一结构不符即 fail closed。当前 `data.rows` 为空。响应没有 `page/records/total` 或其它可靠分页元数据，尚未证明“短页/空页”可以作为终止条件；Agent 只允许请求 `page=1`、`rows<=200`，并固定返回 `pagination_complete: false`，不得自动请求后续页。下面的字段名和列语义来自 `transfersList.js`，类型与可空性待非空响应确认：
 
 | 响应字段/路径 | 类型/可空 | 表格列 | 格式/单位 | 释义 | 证据 |
 |---|---|---|---|---|---|
@@ -148,7 +159,10 @@ GET /scm/invTf?action=tfListNum&<同一组业务过滤条件>
 
 ```http
 POST /scm/invOi/queryTransType?action=queryTransType&type=in
+<empty body; no Content-Type header>
 ```
+
+该辅助查询成功条件为 `status === 200`；候选位于 `data.items[]`，总数为数值字符串 `data.totalsize`。
 
 列表：
 
@@ -167,7 +181,7 @@ GET /scm/invOi/listIn?action=listIn&type=in&matchCon=&locationId=-1&transTypeId=
 | 分页 | `rows` / `page` | integer | `100` / `1` | 每页条数和页码 | jqGrid 配置 + 抓包 |
 | 排序 | `sidx` / `sord` | string | `number` / `desc` | 按单据编号倒序 | jqGrid 配置 + 抓包 |
 
-响应外层为 `status:number`、`msg:string`、`data.page:number`、`data.records:string`、`data.total:number`、`data.rows:array`。
+成功条件为 `status === 200`；失败时读取 `msg` 并 fail closed。响应外层为 `status:number`、`msg:string`、`data.page:number`、`data.records:string`、`data.total:number`、`data.rows:array`。
 
 | 响应字段/路径 | 类型/可空 | 表格列 | 格式/单位 | 释义 | 证据 |
 |---|---|---|---|---|---|
@@ -207,7 +221,7 @@ GET /scm/invOi/listOut?action=listOut&type=out&matchCon=&locationId=-1&transType
 | 分页 | `rows` / `page` | integer | `100` / `1` | 每页条数和页码 | jqGrid 配置 + 抓包 |
 | 排序 | `sidx` / `sord` | string | `number` / `desc` | 按单据编号倒序 | jqGrid 配置 + 抓包 |
 
-响应外层已确认 `status:number`、`msg:string`、`data.page:number`、`data.records:number`、`data.total:number`、`data.rows:array`；当前 `rows` 为空。字段名和列语义来自 `otherOutboundList.js`，类型与可空性待非空响应确认：
+成功条件为 `status === 200`；失败时读取 `msg` 并 fail closed。响应外层已确认 `status:number`、`msg:string`、`data.page:number`、`data.records:number`、`data.total:number`、`data.rows:array`；当前 `rows` 为空。字段名和列语义来自 `otherOutboundList.js`，类型与可空性待非空响应确认：
 
 | 响应字段/路径 | 类型/可空 | 表格列 | 格式/单位 | 释义 | 证据 |
 |---|---|---|---|---|---|
@@ -222,7 +236,7 @@ GET /scm/invOi/listOut?action=listOut&type=out&matchCon=&locationId=-1&transType
 
 ## 商品收发明细
 
-证据等级：B。
+证据等级：B。Agent 线路：条件可执行；旧分类、商品候选和未闭环枚举的业务类型筛选暂不暴露。
 
 ```http
 GET /report/deliverDetail?action=detail&beginDate=<YYYY-MM-DD>&endDate=<YYYY-MM-DD>&goods=&goodsNo=&storage=&storageNo=&brandId=&cateoryTreeValue=&categoryTreeAllValue=&transType=&_search=false&nd=<timestamp>&rows=3000&page=1&sidx=date&sord=desc
@@ -235,12 +249,14 @@ GET /report/deliverDetail?action=detail&beginDate=<YYYY-MM-DD>&endDate=<YYYY-MM-
 | 商品 | `goods` / `goodsNo` | string | 空 | 商品选择器分别提交 `id` 与 `number` | UI + 查询对象 + [来源映射](./lookups.md#商品选择器) |
 | 仓库 | `storage` / `storageNo` | string | 空 | 当前查询读取 `storageNo=locationNo`；`storage` 是兼容参数 | UI + 查询对象 + [来源映射](./lookups.md#普通仓库) |
 | 品牌 | `brandId` | integer/string | 空 | 品牌内部 ID | UI + 查询对象 |
-| 快准分类 | `cateoryTreeValue` | string | 空 | 快准商品分类选择值，保留页面历史拼写 | UI + 查询对象 |
-| 三方分类 | `categoryTreeAllValue` | string | 空 | 三方商品分类选择值 | UI + 查询对象 |
-| 业务类别 | `transType` | integer/string | 空 | 收发业务类型 | UI + 查询对象 |
+| 旧分类兼容值 | `cateoryTreeValue` | string | 当前仅确认发送 `cateoryTreeValue=` | 本页未取得非空选择与候选 `action` 的绑定，不能按参数名猜为快准或三方分类 | 空值抓包 |
+| 旧分类完整值 | `categoryTreeAllValue` | string | 当前仅确认发送 `categoryTreeAllValue=` | 本页未取得非空选择的精确来源与线格式 | 空值抓包 |
+| 业务类别 | `transType` | integer/string | 空；本页候选接口/值域未闭环，Agent 暂不暴露 | 收发业务类型 | UI + 空值抓包 |
 | jqGrid 查询开关/时间戳 | `_search` / `nd` | string | `false` / `<timestamp>` | jqGrid 标记和防缓存参数 | jqGrid 约定 |
 | 分页 | `rows` / `page` | integer | `3000` / `1` | 每页条数和页码 | jqGrid 配置 |
 | 排序 | `sidx` / `sord` | string | `date` / `desc` | 按业务日期倒序 | jqGrid 配置 |
+
+成功条件为 `status === 200`；失败时读取 `msg` 并 fail closed。响应外层为 `status:number`、`msg:string`、`data:object`，列表为 `data.rows[]`，页脚为 `data.userdata`。
 
 当前未取得非空响应样本；字段名和可见列来自 `goodsFlowDetail.js`，类型与可空性待补证：
 
@@ -267,11 +283,11 @@ GET /report/deliverDetail?action=detail&beginDate=<YYYY-MM-DD>&endDate=<YYYY-MM-
 | `data.rows[].outqty` | 待确认 | 出库数量 | 件/基本单位 | 本笔业务出库数量 | jqGrid `colModel` |
 | `data.rows[].totalqty` | 待确认 | 结存数量 | 件/基本单位 | 业务发生后的结存数量 | jqGrid `colModel` |
 
-当前 bundle 中成本列 `inunitCost` / `incost`、`outunitCost` / `outcost`、`totalunitCost` / `totalcost` 已被注释，不能作为当前响应必有字段。默认每页最多 3000 行；Agent 应优先缩小日期、商品或仓库范围，并在结果过大时分页/分段查询。
+当前 bundle 中成本列 `inunitCost` / `incost`、`outunitCost` / `outcost`、`totalunitCost` / `totalcost` 已被注释，不能作为当前响应必有字段。页面的 `rows=3000` 不是 Agent 默认值；较小页是否稳定生效尚未复核。Agent 最多查询 7 天，并优先要求商品或仓库条件；响应达到 2 MiB 时停止并要求缩小范围，不得自动扩大 `rows`。
 
 ## 商品收发汇总
 
-证据等级：A（请求、外层响应和 UI 分组列已验证）。
+证据等级：A（请求、外层响应和 UI 分组列已验证）。Agent 线路：条件可执行；旧分类筛选和商品候选筛选暂不暴露。
 
 ```http
 GET /report/deliverSummary?action=detail&beginDate=<YYYY-MM-DD>&endDate=<YYYY-MM-DD>&goods=&goodsNo=&storage=&storageNo=&brandId=&cateoryTreeValue=&categoryTreeAllValue=
@@ -284,8 +300,8 @@ GET /report/deliverSummary?action=detail&beginDate=<YYYY-MM-DD>&endDate=<YYYY-MM
 | 商品 | `goods` / `goodsNo` | string | 空 | 商品选择器分别提交 `id` 与 `number` | UI + 抓包 + [来源映射](./lookups.md#商品选择器) |
 | 仓库 | `storage` / `storageNo` | string | 空 | 仓库选择器分别提交 `id` 与 `locationNo` | UI + 抓包 + [来源映射](./lookups.md#普通仓库) |
 | 品牌 | `brandId` | string/number | 空 | 品牌 ID | UI + 抓包 |
-| 快准分类 | `cateoryTreeValue` | string | 空 | 快准分类树选择值，保留页面历史拼写 | UI + 抓包 |
-| 三方分类 | `categoryTreeAllValue` | string | 空 | 三方分类树选择值 | UI + 抓包 |
+| 旧分类兼容值 | `cateoryTreeValue` | string | 当前仅确认发送空字符串 | 本页没有非空选择证据，不能套用销售明细页的候选绑定 | 空值抓包 |
+| 旧分类完整值 | `categoryTreeAllValue` | string | 当前仅确认发送空字符串 | 本页没有非空选择证据，Agent 保持为空 | 空值抓包 |
 
 基础维度逐项映射：
 
@@ -325,7 +341,7 @@ GET /report/deliverSummary?action=detail&beginDate=<YYYY-MM-DD>&endDate=<YYYY-MM
 | `data.rows[].qty_15` | number/string | 出库合计 | 件/基本单位 | 所有出库类型合计 | 非空响应 + 分组列配置 |
 | `data.rows[].qty_16` | number/string | 结存 | 件/基本单位 | 统计期末库存 | 非空响应 + 分组列配置 |
 
-响应外层为 `status:number`、`msg:string`、`data:object`。本次默认查询响应接近 10 MB，Agent 必须限制时间和商品范围，避免把大响应整份塞入上下文。
+成功条件为 `status === 200`；失败时读取 `msg` 并 fail closed。响应外层为 `status:number`、`msg:string`、`data:object`。本次默认查询响应接近 10 MB。Agent 最多查询 7 天且优先要求商品或仓库条件；最多读取 2 MiB，超限后停止并明确提示用户缩小范围，不能把页面近似全量请求直接复制为工具默认值。
 
 ## 明确排除的库存写流程
 

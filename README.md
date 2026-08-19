@@ -53,4 +53,4 @@ npm run deploy
 
 Agent 与网页复用完全相同的 `/api/<快准接口路径>`；Agent 只需额外携带 `X-Credential`，不会获得用户名、密码或快准 Cookie。
 
-完整接入、安全边界和故障语义见 [Agent 凭证网关文档](docs/api/agent-gateway.md)。
+完整接入、安全边界和故障语义见 [项目 API 文档](docs/project-api/README.md)。

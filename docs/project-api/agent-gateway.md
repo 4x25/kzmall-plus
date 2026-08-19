@@ -1,4 +1,6 @@
-# AI Agent 凭证网关
+# kzmall-plus AI Agent 凭证网关
+
+本文档描述 kzmall-plus Worker 自有的代理、认证、凭证管理和错误协议。被代理的快准车服上游查询接口契约见[快准接口文档](../api/README.md)。
 
 ## 接入方式
 
